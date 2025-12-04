@@ -79,28 +79,62 @@ impl PtyManager {
             let event_name = format!("pty-output-{}", id);
 
             loop {
-                // Use direct libc::read instead of File::read
-                let n = unsafe {
-                    libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len())
+                // Use poll to wait for data to be available
+                let mut pollfd = libc::pollfd {
+                    fd,
+                    events: libc::POLLIN,
+                    revents: 0,
                 };
 
-                if n > 0 {
-                    let data = String::from_utf8_lossy(&buf[..(n as usize)]).to_string();
-                    let _ = app.emit(&event_name, data);
-                } else if n == 0 {
-                    // EOF - process exited
-                    break;
-                } else {
-                    // n < 0: error occurred
+                let poll_result = unsafe {
+                    libc::poll(&mut pollfd as *mut libc::pollfd, 1, -1)
+                };
+
+                if poll_result < 0 {
                     let errno = unsafe { *libc::__errno_location() };
-                    if errno == libc::EAGAIN || errno == libc::EWOULDBLOCK {
-                        // No data available, sleep briefly
-                        std::thread::sleep(std::time::Duration::from_millis(10));
+                    if errno == libc::EINTR {
+                        // Interrupted by signal, retry
                         continue;
                     } else {
-                        eprintln!("Error reading from PTY: errno {}", errno);
+                        eprintln!("Error polling PTY: errno {}", errno);
                         break;
                     }
+                }
+
+                if poll_result == 0 {
+                    // Timeout (shouldn't happen with -1 timeout)
+                    continue;
+                }
+
+                // Check if there's data to read or if fd was closed
+                if pollfd.revents & libc::POLLIN != 0 {
+                    // Data available, read it
+                    let n = unsafe {
+                        libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len())
+                    };
+
+                    if n > 0 {
+                        let data = String::from_utf8_lossy(&buf[..(n as usize)]).to_string();
+                        let _ = app.emit(&event_name, data);
+                    } else if n == 0 {
+                        // EOF - process exited
+                        break;
+                    } else {
+                        // n < 0: error occurred
+                        let errno = unsafe { *libc::__errno_location() };
+                        if errno == libc::EAGAIN || errno == libc::EWOULDBLOCK {
+                            // Should not happen after successful poll, but continue anyway
+                            continue;
+                        } else {
+                            eprintln!("Error reading from PTY: errno {}", errno);
+                            break;
+                        }
+                    }
+                }
+
+                if pollfd.revents & (libc::POLLHUP | libc::POLLERR) != 0 {
+                    // PTY closed or error
+                    break;
                 }
             }
 

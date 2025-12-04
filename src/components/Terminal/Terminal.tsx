@@ -2,41 +2,40 @@ import { useEffect, useRef, useState } from 'react';
 import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
-import { WebglAddon } from 'xterm-addon-webgl';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { TerminalProps, TerminalTheme } from '@/types/terminal';
+import { TerminalProps } from '@/types/terminal';
+import { useSettingsStore } from '@/store/settingsStore';
+//import { WebglAddon } from 'xterm-addon-webgl';
 import 'xterm/css/xterm.css';
-
-const defaultTheme: TerminalTheme = {
-  background: '#1e1e1e',
-  foreground: '#d4d4d4',
-  cursor: '#d4d4d4',
-  black: '#000000',
-  red: '#cd3131',
-  green: '#0dbc79',
-  yellow: '#e5e510',
-  blue: '#2472c8',
-  magenta: '#bc3fbc',
-  cyan: '#11a8cd',
-  white: '#e5e5e5',
-  brightBlack: '#666666',
-  brightRed: '#f14c4c',
-  brightGreen: '#23d18b',
-  brightYellow: '#f5f543',
-  brightBlue: '#3b8eea',
-  brightMagenta: '#d670d6',
-  brightCyan: '#29b8db',
-  brightWhite: '#ffffff',
-};
 
 export function Terminal({ sessionId, isActive }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const { settings } = useSettingsStore();
 
   // Focus terminal when it becomes active
+  // Update terminal settings when they change
+  useEffect(() => {
+    const term = xtermRef.current;
+    if (!term || (term as any).isDisposed) return;
+
+    term.options = {
+      ...term.options,
+      fontFamily: settings.fontFamily,
+      fontSize: settings.fontSize,
+      cursorStyle: settings.cursorStyle,
+      cursorBlink: settings.cursorBlink,
+      scrollback: settings.scrollback,
+      theme: settings.theme.colors,
+    };
+
+    // Trigger a fit after settings change to recalculate dimensions
+    fitAddonRef.current?.fit();
+  }, [settings]);
+
   useEffect(() => {
     if (isActive && xtermRef.current && !(xtermRef.current as any).isDisposed) {
       xtermRef.current.focus();
@@ -53,10 +52,14 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
 
     const initTerminal = () => {
       try {
-        // Create terminal instance
+        // Create terminal instance with default settings
         term = new XTerm({
-          fontFamily: 'JetBrains Mono, Fira Code, Menlo, Monaco, "Courier New", monospace',
-          theme: defaultTheme,
+          fontFamily: settings.fontFamily,
+          fontSize: settings.fontSize,
+          cursorStyle: settings.cursorStyle,
+          cursorBlink: settings.cursorBlink,
+          scrollback: settings.scrollback,
+          theme: settings.theme.colors,
         });
       } catch (err) {
         console.error('Failed to create terminal:', err);
@@ -75,13 +78,14 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
     term.loadAddon(fitAddon);
     term.loadAddon(webLinksAddon);
 
-    // Try to load WebGL addon for better performance
-    try {
-      const webglAddon = new WebglAddon();
-      term.loadAddon(webglAddon);
-    } catch (e) {
-      console.warn('WebGL addon could not be loaded:', e);
-    }
+    // Note: WebGL addon is not loaded because it causes rendering delays
+    // The default canvas renderer provides immediate updates
+    // try {
+    //   const webglAddon = new WebglAddon();
+    //   term.loadAddon(webglAddon);
+    // } catch (e) {
+    //   console.warn('WebGL addon could not be loaded:', e);
+    // }
 
     // Wait for DOM to be ready before opening terminal
     const openTimeout = setTimeout(() => {
@@ -189,7 +193,10 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
   }, [sessionId]);
 
   return (
-    <div className="w-full h-full relative bg-[#1e1e1e]">
+    <div
+      className="w-full h-full relative overflow-hidden"
+      style={{ backgroundColor: settings.theme.colors.background }}
+    >
       {!isInitialized && (
         <div className="absolute inset-0 flex items-center justify-center text-gray-400">
           <div className="text-center">

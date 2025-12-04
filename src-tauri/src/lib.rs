@@ -1,22 +1,18 @@
 mod commands;
 mod pty;
+mod ssh_config;
 
 use commands::pty_commands::*;
+use commands::ssh_commands::*;
 use commands::window_commands::*;
 use pty::manager::PtyManager;
-use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(PtyManager::new())
-        .setup(|app| {
-            #[cfg(debug_assertions)]
-            {
-                let window = app.get_webview_window("main").unwrap();
-                window.open_devtools();
-            }
+        .setup(|_app| {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -31,6 +27,8 @@ pub fn run() {
             pty_write,
             pty_resize,
             pty_kill,
+            // SSH commands
+            get_ssh_hosts,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

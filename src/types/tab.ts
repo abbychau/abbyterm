@@ -1,3 +1,5 @@
+export type Uuid = string;
+
 export interface Tab {
   id: string;
   title: string;

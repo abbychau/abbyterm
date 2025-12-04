@@ -18,13 +18,24 @@
         "minWidth": 600,
         "minHeight": 400,
         "decorations": false,
-        "transparent": false,
+        "transparent": true,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "shadow": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "draggable-window",
+          "windows": ["*"],
+          "permissions": [
+            "core:event:default",
+            "core:window:allow-start-dragging"
+          ]
+        }
+      ]
     }
   },
   "plugins": {

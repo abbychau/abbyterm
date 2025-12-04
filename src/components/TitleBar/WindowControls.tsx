@@ -39,6 +39,7 @@ export function WindowControls() {
     <div className="flex">
       <button
         onClick={handleMinimize}
+        onMouseDown={(e) => e.stopPropagation()}
         className="w-12 h-10 flex items-center justify-center hover:bg-gray-700 transition-colors"
         aria-label="Minimize"
       >
@@ -46,6 +47,7 @@ export function WindowControls() {
       </button>
       <button
         onClick={handleMaximize}
+        onMouseDown={(e) => e.stopPropagation()}
         className="w-12 h-10 flex items-center justify-center hover:bg-gray-700 transition-colors"
         aria-label={isMaximized ? 'Restore' : 'Maximize'}
       >
@@ -57,6 +59,7 @@ export function WindowControls() {
       </button>
       <button
         onClick={handleClose}
+        onMouseDown={(e) => e.stopPropagation()}
         className="w-12 h-10 flex items-center justify-center hover:bg-red-600 transition-colors"
         aria-label="Close"
       >
