@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { useSettingsStore } from '@/store/settingsStore';
-import { defaultThemes } from '@/types/settings';
+import { useState, useEffect } from 'react';
+import { useSettingsStore, defaultShortcuts } from '@/store/settingsStore';
+import { defaultThemes, Shortcuts } from '@/types/settings';
+import { invoke } from '@tauri-apps/api/core';
+import { ShortcutRecorder } from './ShortcutRecorder';
+import { RotateCcw } from 'lucide-react';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -9,7 +12,48 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { settings, updateSettings, setTheme } = useSettingsStore();
-  const [activeTab, setActiveTab] = useState<'appearance' | 'terminal' | 'advanced'>('appearance');
+  const [activeTab, setActiveTab] = useState<'appearance' | 'terminal' | 'shortcuts' | 'advanced'>('appearance');
+  const [availableShells, setAvailableShells] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'advanced') {
+      invoke<string[]>('get_available_shells')
+        .then(setAvailableShells)
+        .catch(console.error);
+    }
+  }, [isOpen, activeTab]);
+
+  const updateShortcut = (key: keyof Shortcuts, value: string) => {
+    updateSettings({
+      shortcuts: {
+        ...settings.shortcuts,
+        [key]: value,
+      },
+    });
+  };
+
+  const renderShortcutRow = (label: string, id: keyof Shortcuts) => (
+    <div className="flex items-center justify-between">
+      <span className="text-gray-300">{label}</span>
+      <div className="flex items-center gap-2">
+        <ShortcutRecorder
+          value={settings.shortcuts[id]}
+          onChange={(val) => updateShortcut(id, val)}
+        />
+        <button
+          onClick={() => updateShortcut(id, defaultShortcuts[id])}
+          className={`p-1.5 rounded transition-colors ${
+            settings.shortcuts[id] !== defaultShortcuts[id]
+              ? 'text-gray-400 hover:text-white hover:bg-gray-700 opacity-100'
+              : 'text-transparent opacity-0 pointer-events-none'
+          }`}
+          title="Reset to default"
+        >
+          <RotateCcw size={14} />
+        </button>
+      </div>
+    </div>
+  );
 
   if (!isOpen) return null;
 
@@ -32,6 +76,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           {[
             { id: 'appearance', label: 'Appearance' },
             { id: 'terminal', label: 'Terminal' },
+            { id: 'shortcuts', label: 'Shortcuts' },
             { id: 'advanced', label: 'Advanced' },
           ].map((tab) => (
             <button
@@ -54,7 +99,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium mb-2">Theme</label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-4 gap-3">
                   {Object.entries(defaultThemes).map(([name, theme]) => (
                     <button
                       key={name}
@@ -124,17 +169,34 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium mb-2">Cursor Style</label>
-                <select
-                  value={settings.cursorStyle}
-                  onChange={(e) =>
-                    updateSettings({ cursorStyle: e.target.value as 'block' | 'underline' | 'bar' })
-                  }
-                  className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="block">Block</option>
-                  <option value="underline">Underline</option>
-                  <option value="bar">Bar</option>
-                </select>
+                <div className="flex gap-6 pt-2">
+                  {(['block', 'underline', 'bar'] as const).map((style) => (
+                    <label key={style} className="flex items-center gap-2 cursor-pointer group">
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                        settings.cursorStyle === style 
+                          ? 'border-blue-500' 
+                          : 'border-gray-500 group-hover:border-gray-400'
+                      }`}>
+                        {settings.cursorStyle === style && (
+                          <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        )}
+                      </div>
+                      <input
+                        type="radio"
+                        name="cursorStyle"
+                        value={style}
+                        checked={settings.cursorStyle === style}
+                        onChange={(e) =>
+                          updateSettings({ cursorStyle: e.target.value as 'block' | 'underline' | 'bar' })
+                        }
+                        className="hidden"
+                      />
+                      <span className="capitalize text-gray-300 group-hover:text-white transition-colors">
+                        {style}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center justify-between">
@@ -170,19 +232,49 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
           )}
 
+          {activeTab === 'shortcuts' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                <h3 className="col-span-2 text-lg font-medium mb-2 text-blue-400">Terminal</h3>
+                
+                {renderShortcutRow('Copy', 'copy')}
+                {renderShortcutRow('Paste', 'paste')}
+                {renderShortcutRow('Zoom In', 'zoomIn')}
+                {renderShortcutRow('Zoom Out', 'zoomOut')}
+                {renderShortcutRow('Reset Zoom', 'zoomReset')}
+
+                <h3 className="col-span-2 text-lg font-medium mb-2 mt-4 text-blue-400">Window & Tabs</h3>
+
+                {renderShortcutRow('Toggle Fullscreen', 'toggleFullscreen')}
+                {renderShortcutRow('New Tab', 'newTab')}
+                {renderShortcutRow('Close Tab', 'closeTab')}
+                {renderShortcutRow('Next Tab', 'nextTab')}
+                {renderShortcutRow('Previous Tab', 'prevTab')}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'advanced' && (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium mb-2">Default Shell</label>
-                <input
-                  type="text"
-                  value={settings.shell}
-                  onChange={(e) => updateSettings({ shell: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
-                  placeholder="/bin/bash"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    list="shell-options"
+                    value={settings.shell}
+                    onChange={(e) => updateSettings({ shell: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    placeholder="/bin/bash"
+                  />
+                  <datalist id="shell-options">
+                    {availableShells.map((shell) => (
+                      <option key={shell} value={shell} />
+                    ))}
+                  </datalist>
+                </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  Leave empty to use system default shell
+                  Select from list or type custom path. Leave empty to use system default.
                 </p>
               </div>
             </div>

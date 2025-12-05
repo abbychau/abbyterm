@@ -5,14 +5,18 @@ mod ssh_config;
 use commands::pty_commands::*;
 use commands::ssh_commands::*;
 use commands::window_commands::*;
+use commands::shell_commands::*;
 use pty::manager::PtyManager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(PtyManager::new())
         .setup(|_app| {
+            // linux
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -29,6 +33,8 @@ pub fn run() {
             pty_kill,
             // SSH commands
             get_ssh_hosts,
+            // Shell commands
+            get_available_shells,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

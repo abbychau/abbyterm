@@ -28,12 +28,16 @@ export function TerminalContainer() {
 
   if (tabs.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4 text-gray-100">No Terminal Open</h2>
-          <p className="text-gray-400 mb-6">
-            Click the + button in the title bar to create a new terminal
-          </p>
+      <div className="flex-1 flex items-center justify-center p-8 select-none">
+        <div className="flex flex-col items-center gap-6 opacity-30 hover:opacity-50 transition-opacity duration-700">
+          <img 
+            src="/hamham.png" 
+            alt="No Terminal" 
+            className="w-80 h-80 object-contain grayscale brightness-75 pointer-events-none" 
+          />
+          <h2 className="font-mono text-sm tracking-[0.5em] text-gray-400 uppercase">
+            No Terminal Open
+          </h2>
         </div>
       </div>
     );

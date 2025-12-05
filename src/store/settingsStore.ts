@@ -1,6 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Settings, SettingsStore, Theme, defaultThemes } from '@/types/settings';
+import { Settings, SettingsStore, Theme, defaultThemes, Shortcuts } from '@/types/settings';
+
+export const defaultShortcuts: Shortcuts = {
+  copy: 'Ctrl+Shift+C',
+  paste: 'Ctrl+Shift+V',
+  toggleFullscreen: 'F11',
+  zoomIn: 'Ctrl+=',
+  zoomOut: 'Ctrl+-',
+  zoomReset: 'Ctrl+0',
+  newTab: 'Ctrl+T',
+  closeTab: 'Ctrl+W',
+  nextTab: 'Ctrl+Tab',
+  prevTab: 'Ctrl+Shift+Tab',
+};
 
 const defaultSettings: Settings = {
   theme: defaultThemes['Dark+'],
@@ -10,6 +23,7 @@ const defaultSettings: Settings = {
   cursorBlink: true,
   scrollback: 10000,
   shell: '/bin/bash',
+  shortcuts: defaultShortcuts,
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -29,6 +43,24 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'abbyterm-settings',
+      merge: (persistedState: any, currentState) => {
+        // Deep merge settings to ensure new fields (like shortcuts) are added
+        // to existing persisted state
+        const mergedSettings = {
+          ...defaultSettings,
+          ...(persistedState?.settings || {}),
+          shortcuts: {
+            ...defaultSettings.shortcuts,
+            ...(persistedState?.settings?.shortcuts || {}),
+          },
+        };
+
+        return {
+          ...currentState,
+          ...persistedState,
+          settings: mergedSettings,
+        };
+      },
     }
   )
 );

@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { SettingsPanel } from '../Settings/SettingsPanel';
+import { AboutModal } from '../AboutModal';
 
 export function MenuButton() {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   return (
     <>
@@ -29,9 +31,7 @@ export function MenuButton() {
             <DropdownMenu.Separator className="h-px bg-gray-700 my-1" />
             <DropdownMenu.Item
               className="px-3 py-2 text-sm text-gray-200 rounded hover:bg-gray-700 outline-none cursor-pointer"
-              onSelect={() => {
-                console.log('About clicked');
-              }}
+              onSelect={() => setAboutOpen(true)}
             >
               About
             </DropdownMenu.Item>
@@ -40,6 +40,7 @@ export function MenuButton() {
       </DropdownMenu.Root>
 
       <SettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <AboutModal isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
     </>
   );
 }

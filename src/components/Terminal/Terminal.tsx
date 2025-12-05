@@ -15,6 +15,11 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const { settings } = useSettingsStore();
+  const settingsRef = useRef(settings);
+
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   // Focus terminal when it becomes active
   // Update terminal settings when they change
@@ -22,25 +27,52 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
     const term = xtermRef.current;
     if (!term || (term as any).isDisposed) return;
 
-    term.options = {
-      ...term.options,
-      fontFamily: settings.fontFamily,
-      fontSize: settings.fontSize,
-      cursorStyle: settings.cursorStyle,
-      cursorBlink: settings.cursorBlink,
-      scrollback: settings.scrollback,
-      theme: settings.theme.colors,
-    };
+    term.options.fontFamily = settings.fontFamily;
+    term.options.fontSize = settings.fontSize;
+    term.options.cursorStyle = settings.cursorStyle;
+    term.options.cursorBlink = settings.cursorBlink;
+    term.options.scrollback = settings.scrollback;
+    term.options.theme = settings.theme.colors;
 
     // Trigger a fit after settings change to recalculate dimensions
-    fitAddonRef.current?.fit();
-  }, [settings]);
+    if (fitAddonRef.current) {
+      try {
+        fitAddonRef.current.fit();
+        invoke('pty_resize', {
+          sessionId,
+          cols: term.cols,
+          rows: term.rows,
+        }).catch((err) => console.error('Failed to resize PTY after settings change:', err));
+      } catch (e) {
+        console.error('Failed to fit terminal after settings change:', e);
+      }
+    }
+  }, [settings, sessionId]);
 
   useEffect(() => {
     if (isActive && xtermRef.current && !(xtermRef.current as any).isDisposed) {
-      xtermRef.current.focus();
+      // Wait for layout to update (display: none -> block)
+      setTimeout(() => {
+        if (fitAddonRef.current) {
+          try {
+            fitAddonRef.current.fit();
+            // Sync PTY size
+            const term = xtermRef.current;
+            if (term) {
+              invoke('pty_resize', {
+                sessionId,
+                cols: term.cols,
+                rows: term.rows,
+              }).catch((err) => console.error('Failed to resize PTY on activation:', err));
+            }
+          } catch (e) {
+            console.error('Failed to fit terminal on activation:', e);
+          }
+        }
+        xtermRef.current?.focus();
+      }, 50);
     }
-  }, [isActive]);
+  }, [isActive, sessionId]);
 
   useEffect(() => {
     const terminalElement = terminalRef.current;
@@ -77,6 +109,53 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
 
     term.loadAddon(fitAddon);
     term.loadAddon(webLinksAddon);
+
+    // Custom key event handler for shortcuts
+    term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+      if (e.type !== 'keydown') return true;
+
+      const modifiers = [];
+      if (e.ctrlKey) modifiers.push('Ctrl');
+      if (e.shiftKey) modifiers.push('Shift');
+      if (e.altKey) modifiers.push('Alt');
+      if (e.metaKey) modifiers.push('Meta');
+      
+      let key = e.key;
+      if (key === ' ') key = 'Space';
+      if (key.length === 1) key = key.toUpperCase();
+      
+      const currentShortcut = [...modifiers, key].join('+');
+      const { shortcuts } = settingsRef.current;
+
+      if (currentShortcut === shortcuts.copy) {
+        const selection = term?.getSelection();
+        if (selection) {
+          navigator.clipboard.writeText(selection);
+          return false;
+        }
+      } else if (currentShortcut === shortcuts.paste) {
+        navigator.clipboard.readText().then((text) => {
+          term?.paste(text);
+        });
+        return false;
+      }
+
+      // Allow global shortcuts to bubble up
+      if (
+        currentShortcut === shortcuts.toggleFullscreen ||
+        currentShortcut === shortcuts.zoomIn ||
+        currentShortcut === shortcuts.zoomOut ||
+        currentShortcut === shortcuts.zoomReset ||
+        currentShortcut === shortcuts.newTab ||
+        currentShortcut === shortcuts.closeTab ||
+        currentShortcut === shortcuts.nextTab ||
+        currentShortcut === shortcuts.prevTab
+      ) {
+        return false;
+      }
+
+      return true;
+    });
 
     // Note: WebGL addon is not loaded because it causes rendering delays
     // The default canvas renderer provides immediate updates
@@ -127,20 +206,32 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       });
     });
 
-    // Handle window resize
+    // Handle resize
     const handleResize = () => {
       if (!term) return;
-      fitAddon.fit();
-      invoke('pty_resize', {
-        sessionId,
-        cols: term.cols,
-        rows: term.rows,
-      }).catch((err) => {
-        console.error('Failed to resize PTY:', err);
-      });
+      try {
+        fitAddon.fit();
+        invoke('pty_resize', {
+          sessionId,
+          cols: term.cols,
+          rows: term.rows,
+        }).catch((err) => {
+          console.error('Failed to resize PTY:', err);
+        });
+      } catch (e) {
+        // Ignore fit errors (can happen if element is hidden)
+      }
     };
 
-    window.addEventListener('resize', handleResize);
+    // Use ResizeObserver to handle container resizing
+    const resizeObserver = new ResizeObserver(() => {
+      // Use requestAnimationFrame to avoid "ResizeObserver loop limit exceeded"
+      requestAnimationFrame(() => {
+        handleResize();
+      });
+    });
+    
+    resizeObserver.observe(terminalElement);
 
     // Initial resize after a short delay to ensure proper dimensions
     setTimeout(() => {
@@ -174,7 +265,7 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
         clearTimeout((term as any)._fitTimeout);
       }
 
-      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
 
       unlistenPromise.then((unlisten) => unlisten()).catch(() => {});
       unlistenExitPromise.then((unlisten) => unlisten()).catch(() => {});

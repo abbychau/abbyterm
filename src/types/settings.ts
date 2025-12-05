@@ -31,6 +31,20 @@ export interface Settings {
   cursorBlink: boolean;
   scrollback: number;
   shell: string;
+  shortcuts: Shortcuts;
+}
+
+export interface Shortcuts {
+  copy: string;
+  paste: string;
+  toggleFullscreen: string;
+  zoomIn: string;
+  zoomOut: string;
+  zoomReset: string;
+  newTab: string;
+  closeTab: string;
+  nextTab: string;
+  prevTab: string;
 }
 
 export interface SettingsStore {

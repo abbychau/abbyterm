@@ -39,9 +39,14 @@ export function TitleBar() {
 
   return (
     <div className={`h-10 bg-gray-900 border-b border-gray-800 flex items-center justify-between select-none ${isMaximized ? '' : 'rounded-t-lg'}`}>
-      {/* Left section - Title (not draggable) */}
-      <div className="flex items-center gap-2 px-3">
-        <span className="text-sm font-semibold text-gray-200">AbbyTerm</span>
+      {/* Left section - Title */}
+      <div 
+        data-tauri-drag-region 
+        className="flex items-center gap-2 px-1 select-none"
+        onDoubleClick={handleDoubleClick}
+      >
+        <img src="/hamham.png" alt="Icon" className="w-8 h-8 pointer-events-none" />
+        <span className="text-sm font-semibold text-gray-200 -ml-2 pointer-events-none">AbbyTerm</span>
       </div>
 
       {/* Middle spacer - DRAGGABLE with JS handler */}

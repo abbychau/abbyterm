@@ -1,7 +1,5 @@
 # AbbyTerm
 
-A modern, frameless terminal emulator built with Tauri, React, and xterm.js.
-
 ![AbbyTerm Screenshot](readme.gif)
 
 ## Getting Started
