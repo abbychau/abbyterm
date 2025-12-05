@@ -1,6 +1,6 @@
 # AbbyTerm
 
-![AbbyTerm Screenshot](readme.gif)
+![AbbyTerm Screenshot](demo.gif)
 
 ## Getting Started
 
