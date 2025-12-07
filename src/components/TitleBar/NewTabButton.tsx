@@ -37,6 +37,7 @@ export function NewTabButton() {
       // Create PTY session
       const sessionId = await invoke<string>('create_pty_session', {
         shell: null,
+        args: null,
         cwd: null,
         cols: 80,
         rows: 24,
@@ -75,6 +76,7 @@ export function NewTabButton() {
       // Create PTY session with SSH command
       const sessionId = await invoke<string>('create_pty_session', {
         shell: '/bin/sh',
+        args: null,
         cwd: null,
         cols: 80,
         rows: 24,

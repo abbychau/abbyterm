@@ -277,6 +277,27 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   Select from list or type custom path. Leave empty to use system default.
                 </p>
               </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-medium">WebGL Renderer (Experimental)</label>
+                  <p className="text-xs text-gray-400">
+                    Enable WebGL rendering for better performance. May cause issues on some systems.
+                  </p>
+                </div>
+                <button
+                  onClick={() => updateSettings({ useWebGL: !settings.useWebGL })}
+                  className={`w-12 h-6 rounded-full transition-colors relative ${
+                    settings.useWebGL ? 'bg-blue-600' : 'bg-gray-600'
+                  }`}
+                >
+                  <div
+                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                      settings.useWebGL ? 'translate-x-6' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           )}
         </div>

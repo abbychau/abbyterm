@@ -53,6 +53,7 @@ export function useGlobalShortcuts() {
           const tabId = uuidv4();
           const sessionId = await invoke<string>('create_pty_session', {
             shell: settings.shell || null,
+            args: null,
             cwd: null,
             cols: 80,
             rows: 24,

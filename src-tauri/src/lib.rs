@@ -7,13 +7,34 @@ use commands::ssh_commands::*;
 use commands::window_commands::*;
 use commands::shell_commands::*;
 use pty::manager::PtyManager;
+use std::sync::Mutex;
+use tauri::State;
+
+struct InitialCliArgs {
+    args: Mutex<Option<Vec<String>>>,
+}
+
+#[tauri::command]
+fn get_initial_args(state: State<'_, InitialCliArgs>) -> Option<Vec<String>> {
+    state.args.lock().unwrap().clone()
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let args: Vec<String> = std::env::args().collect();
+    let mut initial_args = None;
+    
+    if let Some(index) = args.iter().position(|arg| arg == "-e") {
+        if index + 1 < args.len() {
+             initial_args = Some(args[index+1..].to_vec());
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .manage(PtyManager::new())
+        .manage(InitialCliArgs { args: Mutex::new(initial_args) })
         .setup(|_app| {
             // linux
             
@@ -35,6 +56,8 @@ pub fn run() {
             get_ssh_hosts,
             // Shell commands
             get_available_shells,
+            // CLI args
+            get_initial_args,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

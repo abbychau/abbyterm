@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tauri dev",
+    "dev": "echo 'DO NOT RUN under VSCode.' && tauri dev",
     "build": "tauri build",
     "preview": "vite preview",
     "vite": "vite",

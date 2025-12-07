@@ -6,13 +6,14 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { TerminalProps } from '@/types/terminal';
 import { useSettingsStore } from '@/store/settingsStore';
-//import { WebglAddon } from 'xterm-addon-webgl';
+import { WebglAddon } from 'xterm-addon-webgl';
 import 'xterm/css/xterm.css';
 
 export function Terminal({ sessionId, isActive }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const webglAddonRef = useRef<WebglAddon | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const { settings } = useSettingsStore();
   const settingsRef = useRef(settings);
@@ -33,6 +34,23 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
     term.options.cursorBlink = settings.cursorBlink;
     term.options.scrollback = settings.scrollback;
     term.options.theme = settings.theme.colors;
+
+    // Handle WebGL addon
+    if (settings.useWebGL && !webglAddonRef.current) {
+      try {
+        const webglAddon = new WebglAddon();
+        webglAddon.onContextLoss(() => {
+          webglAddon.dispose();
+        });
+        term.loadAddon(webglAddon);
+        webglAddonRef.current = webglAddon;
+      } catch (e) {
+        console.warn('WebGL addon could not be loaded:', e);
+      }
+    } else if (!settings.useWebGL && webglAddonRef.current) {
+      webglAddonRef.current.dispose();
+      webglAddonRef.current = null;
+    }
 
     // Trigger a fit after settings change to recalculate dimensions
     if (fitAddonRef.current) {
@@ -159,12 +177,18 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
 
     // Note: WebGL addon is not loaded because it causes rendering delays
     // The default canvas renderer provides immediate updates
-    // try {
-    //   const webglAddon = new WebglAddon();
-    //   term.loadAddon(webglAddon);
-    // } catch (e) {
-    //   console.warn('WebGL addon could not be loaded:', e);
-    // }
+    if (settingsRef.current.useWebGL) {
+      try {
+        const webglAddon = new WebglAddon();
+        webglAddon.onContextLoss(() => {
+          webglAddon.dispose();
+        });
+        term.loadAddon(webglAddon);
+        webglAddonRef.current = webglAddon;
+      } catch (e) {
+        console.warn('WebGL addon could not be loaded:', e);
+      }
+    }
 
     // Wait for DOM to be ready before opening terminal
     const openTimeout = setTimeout(() => {

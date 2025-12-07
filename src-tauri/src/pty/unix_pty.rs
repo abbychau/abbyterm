@@ -15,6 +15,7 @@ pub struct UnixPty {
 impl UnixPty {
     pub fn new(
         shell: Option<String>,
+        args: Option<Vec<String>>,
         cwd: Option<std::path::PathBuf>,
         cols: u16,
         rows: u16,
@@ -72,6 +73,9 @@ impl UnixPty {
             .unwrap_or_else(|| "/bin/bash".to_string());
 
         let mut command = Command::new(&shell_path);
+        if let Some(args) = args {
+            command.args(args);
+        }
         command.env("TERM", "xterm-256color");
 
         if let Some(dir) = cwd {

@@ -5,6 +5,7 @@ use uuid::Uuid;
 #[tauri::command]
 pub async fn create_pty_session(
     shell: Option<String>,
+    args: Option<Vec<String>>,
     cwd: Option<String>,
     cols: u16,
     rows: u16,
@@ -13,7 +14,7 @@ pub async fn create_pty_session(
 ) -> Result<String, String> {
     let cwd_path = cwd.map(std::path::PathBuf::from);
     let id = manager
-        .create_session(shell, cwd_path, cols, rows, app)
+        .create_session(shell, args, cwd_path, cols, rows, app)
         .await
         .map_err(|e| e.to_string())?;
     Ok(id.to_string())

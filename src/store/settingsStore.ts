@@ -23,6 +23,7 @@ const defaultSettings: Settings = {
   cursorBlink: true,
   scrollback: 10000,
   shell: '/bin/bash',
+  useWebGL: false,
   shortcuts: defaultShortcuts,
 };
 

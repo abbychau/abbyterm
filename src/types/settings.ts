@@ -31,6 +31,7 @@ export interface Settings {
   cursorBlink: boolean;
   scrollback: number;
   shell: string;
+  useWebGL: boolean;
   shortcuts: Shortcuts;
 }
 

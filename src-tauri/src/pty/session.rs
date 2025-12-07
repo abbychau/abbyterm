@@ -11,8 +11,14 @@ pub struct PtySession {
 }
 
 impl PtySession {
-    pub fn new(shell: Option<String>, cwd: Option<PathBuf>, cols: u16, rows: u16) -> Result<Self> {
-        let pty = UnixPty::new(shell, cwd, cols, rows)?;
+    pub fn new(
+        shell: Option<String>,
+        args: Option<Vec<String>>,
+        cwd: Option<PathBuf>,
+        cols: u16,
+        rows: u16,
+    ) -> Result<Self> {
+        let pty = UnixPty::new(shell, args, cwd, cols, rows)?;
 
         Ok(Self {
             id: Uuid::new_v4(),

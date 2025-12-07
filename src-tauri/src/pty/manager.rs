@@ -22,12 +22,13 @@ impl PtyManager {
     pub async fn create_session(
         &self,
         shell: Option<String>,
+        args: Option<Vec<String>>,
         cwd: Option<PathBuf>,
         cols: u16,
         rows: u16,
         app: AppHandle,
     ) -> Result<Uuid> {
-        let session = PtySession::new(shell, cwd, cols, rows)?;
+        let session = PtySession::new(shell, args, cwd, cols, rows)?;
         let id = session.id;
 
         // Get the raw fd for direct reading
