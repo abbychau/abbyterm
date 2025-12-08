@@ -104,7 +104,7 @@ impl UnixPty {
                 }
 
                 // Set controlling terminal
-                if libc::ioctl(slave_fd, libc::TIOCSCTTY, 0) < 0 {
+                if libc::ioctl(slave_fd, libc::TIOCSCTTY as _, 0) < 0 {
                     return Err(std::io::Error::last_os_error());
                 }
 
