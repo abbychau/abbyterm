@@ -92,7 +92,12 @@ impl PtyManager {
                 };
 
                 if poll_result < 0 {
-                    let errno = unsafe { *libc::__errno_location() };
+                    let errno = unsafe {
+                        #[cfg(target_os = "linux")]
+                        { *libc::__errno_location() }
+                        #[cfg(target_os = "macos")]
+                        { *libc::__error() }
+                    };
                     if errno == libc::EINTR {
                         // Interrupted by signal, retry
                         continue;
@@ -122,7 +127,12 @@ impl PtyManager {
                         break;
                     } else {
                         // n < 0: error occurred
-                        let errno = unsafe { *libc::__errno_location() };
+                        let errno = unsafe {
+                            #[cfg(target_os = "linux")]
+                            { *libc::__errno_location() }
+                            #[cfg(target_os = "macos")]
+                            { *libc::__error() }
+                        };
                         if errno == libc::EAGAIN || errno == libc::EWOULDBLOCK {
                             // Should not happen after successful poll, but continue anyway
                             continue;

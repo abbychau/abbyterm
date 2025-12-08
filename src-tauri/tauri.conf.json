@@ -18,10 +18,11 @@
         "minWidth": 600,
         "minHeight": 400,
         "decorations": false,
-        "transparent": true,
+        "transparent": false,
         "resizable": true,
         "fullscreen": false,
-        "shadow": false
+        "acceptFirstMouse": true,
+        "tabbingIdentifier": "AbbyTerm"
       }
     ],
     "security": {
