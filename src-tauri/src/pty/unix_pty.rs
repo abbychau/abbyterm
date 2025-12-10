@@ -12,6 +12,16 @@ pub struct UnixPty {
     pub child: Child,
 }
 
+// UnixPty implementation for managing pseudo-terminals on Unix-like systems.
+//
+// This implementation handles the lifecycle of a PTY pair (master/slave) and the associated
+// child process (shell).
+//
+// Key concepts:
+// - **Master PTY**: The side held by this application. We write input to it (which the shell receives) and read output from it (which the shell produced).
+// - **Slave PTY**: The side given to the child process. It acts as the child's stdin, stdout, and stderr.
+// - **Session & Controlling Terminal**: The child process is placed in a new session (`setsid`) and the slave PTY is set as its controlling terminal (`TIOCSCTTY`). This ensures signals like Ctrl+C are handled correctly.
+// - **Non-blocking I/O**: The master FD is set to non-blocking mode to allow asynchronous reading.
 impl UnixPty {
     pub fn new(
         shell: Option<String>,

@@ -15,6 +15,16 @@ function App() {
   useGlobalShortcuts();
 
   useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
+
+  useEffect(() => {
     const init = async () => {
       if (initialized.current) return;
       initialized.current = true;
