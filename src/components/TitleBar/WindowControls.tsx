@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Minus, Square, X, Copy } from 'lucide-react';
@@ -6,14 +6,22 @@ import { Minus, Square, X, Copy } from 'lucide-react';
 export function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false);
   const appWindow = getCurrentWindow();
+  const lastWindowSize = useRef<{ width: number; height: number } | null>(null);
 
   useEffect(() => {
     // Check initial state
     invoke<boolean>('is_maximized').then(setIsMaximized);
 
     // Listen for window resize events
-    const unlisten = appWindow.onResized(() => {
-      invoke<boolean>('is_maximized').then(setIsMaximized);
+    const unlisten = appWindow.onResized(({ payload: size }) => {
+      if (
+        lastWindowSize.current === null ||
+        lastWindowSize.current.width !== size.width ||
+        lastWindowSize.current.height !== size.height
+      ) {
+        lastWindowSize.current = { width: size.width, height: size.height };
+        invoke<boolean>('is_maximized').then(setIsMaximized);
+      }
     });
 
     return () => {
