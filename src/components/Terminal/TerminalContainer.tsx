@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Terminal } from './Terminal';
 import { useTabStore } from '@/store/tabStore';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 export function TerminalContainer() {
   const { tabs, activeTabId } = useTabStore();
   const [isMaximized, setIsMaximized] = useState(false);
+  const lastWindowSize = useRef<{ width: number; height: number } | null>(null);
 
   useEffect(() => {
     const checkMaximized = async () => {
@@ -17,8 +18,15 @@ export function TerminalContainer() {
     checkMaximized();
 
     const appWindow = getCurrentWindow();
-    const unlisten = appWindow.onResized(() => {
-      checkMaximized();
+    const unlisten = appWindow.onResized(({ payload: size }) => {
+      if (
+        lastWindowSize.current === null ||
+        lastWindowSize.current.width !== size.width ||
+        lastWindowSize.current.height !== size.height
+      ) {
+        lastWindowSize.current = { width: size.width, height: size.height };
+        checkMaximized();
+      }
     });
 
     return () => {
