@@ -11,8 +11,19 @@ import { v4 as uuidv4 } from 'uuid';
 function App() {
   const [isMaximized, setIsMaximized] = useState(false);
   const addTab = useTabStore((state) => state.addTab);
+  const activeTabTitle = useTabStore((state) => 
+    state.tabs.find((t) => t.id === state.activeTabId)?.title
+  );
   const initialized = useRef(false);
   useGlobalShortcuts();
+
+  useEffect(() => {
+    const updateTitle = async () => {
+      const appWindow = getCurrentWindow();
+      await appWindow.setTitle(activeTabTitle || 'AbbyTerm');
+    };
+    updateTitle();
+  }, [activeTabTitle]);
 
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {

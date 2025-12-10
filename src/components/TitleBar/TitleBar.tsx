@@ -4,9 +4,13 @@ import { MenuButton } from './MenuButton';
 import { NewTabButton } from './NewTabButton';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
+import { useTabStore } from '@/store/tabStore';
 
 export function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false);
+  const activeTabTitle = useTabStore((state) => 
+    state.tabs.find((t) => t.id === state.activeTabId)?.title
+  );
 
   useEffect(() => {
     const checkMaximized = async () => {
@@ -46,7 +50,7 @@ export function TitleBar() {
         onDoubleClick={handleDoubleClick}
       >
         <img src="/hamham.png" alt="Icon" className="w-8 h-8 pointer-events-none" />
-        <span className="text-sm font-semibold text-gray-200 -ml-2 pointer-events-none">AbbyTerm</span>
+        <span className="text-sm font-semibold text-gray-200 -ml-2 pointer-events-none">{activeTabTitle || 'AbbyTerm'}</span>
       </div>
 
       {/* Middle spacer - DRAGGABLE with JS handler */}
@@ -61,7 +65,7 @@ export function TitleBar() {
         <NewTabButton />
         <MenuButton />
       </div>
-
+      <div className="w-px h-4 bg-gray-700 mx-1" />
       <WindowControls />
     </div>
   );

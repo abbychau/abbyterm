@@ -13,6 +13,7 @@ export const defaultShortcuts: Shortcuts = {
   closeTab: 'Ctrl+W',
   nextTab: 'Ctrl+Tab',
   prevTab: 'Ctrl+Shift+Tab',
+  find: 'Ctrl+F',
 };
 
 const defaultSettings: Settings = {

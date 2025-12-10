@@ -46,6 +46,7 @@ export interface Shortcuts {
   closeTab: string;
   nextTab: string;
   prevTab: string;
+  find: string;
 }
 
 export interface SettingsStore {

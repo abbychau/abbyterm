@@ -6,7 +6,10 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { TerminalProps } from '@/types/terminal';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useTabStore } from '@/store/tabStore';
 import { WebglAddon } from 'xterm-addon-webgl';
+import { SearchAddon } from 'xterm-addon-search';
+import { SearchBox } from './SearchBox';
 import 'xterm/css/xterm.css';
 
 export function Terminal({ sessionId, isActive }: TerminalProps) {
@@ -14,8 +17,11 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const webglAddonRef = useRef<WebglAddon | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { settings } = useSettingsStore();
+  const updateTab = useTabStore((state) => state.updateTab);
   const settingsRef = useRef(settings);
 
   useEffect(() => {
@@ -124,9 +130,48 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
     // Add addons
     const fitAddon = new FitAddon();
     const webLinksAddon = new WebLinksAddon();
+    const searchAddon = new SearchAddon();
 
     term.loadAddon(fitAddon);
     term.loadAddon(webLinksAddon);
+    term.loadAddon(searchAddon);
+    searchAddonRef.current = searchAddon;
+
+    // Handle title change from OSC sequences
+    term.onTitleChange((title) => {
+      const tabs = useTabStore.getState().tabs;
+      const tab = tabs.find((t) => t.sessionId === sessionId);
+      if (tab) {
+        updateTab(tab.id, { title });
+      }
+    });
+
+    // Handle prompt detection for title update
+    term.onCursorMove(() => {
+      const tabs = useTabStore.getState().tabs;
+      const tab = tabs.find((t) => t.sessionId === sessionId);
+      if (!tab) return;
+
+      const buffer = term?.buffer.active;
+      if (!buffer) return;
+      
+      const cursorY = buffer.cursorY;
+      const line = buffer.getLine(cursorY)?.translateToString().trimEnd();
+
+      if (!line) return;
+
+      // Regex for user@host:path$
+      // e.g. abbyc@mqtt1:~$ 
+      const promptRegex = /^(.+@.+:.+)([$#%])\s*$/;
+      const match = line.match(promptRegex);
+
+      if (match) {
+        const newTitle = match[1];
+        if (tab.title !== newTitle) {
+          updateTab(tab.id, { title: newTitle });
+        }
+      }
+    });
 
     // Custom key event handler for shortcuts
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
@@ -148,13 +193,22 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       if (currentShortcut === shortcuts.copy) {
         const selection = term?.getSelection();
         if (selection) {
+          e.preventDefault();
+          e.stopPropagation();
           navigator.clipboard.writeText(selection);
           return false;
         }
       } else if (currentShortcut === shortcuts.paste) {
+        e.preventDefault();
+        e.stopPropagation();
         navigator.clipboard.readText().then((text) => {
           term?.paste(text);
         });
+        return false;
+      } else if (currentShortcut === shortcuts.find) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsSearchOpen((prev) => !prev);
         return false;
       }
 
@@ -312,6 +366,15 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       className="w-full h-full relative overflow-hidden"
       style={{ backgroundColor: settings.theme.colors.background }}
     >
+      {isSearchOpen && searchAddonRef.current && (
+        <SearchBox
+          searchAddon={searchAddonRef.current}
+          onClose={() => {
+            setIsSearchOpen(false);
+            xtermRef.current?.focus();
+          }}
+        />
+      )}
       {!isInitialized && (
         <div className="absolute inset-0 flex items-center justify-center text-gray-400">
           <div className="text-center">
