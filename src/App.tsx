@@ -12,7 +12,7 @@ function App() {
   const [isMaximized, setIsMaximized] = useState(false);
   const addTab = useTabStore((state) => state.addTab);
   const initialized = useRef(false);
-  const lastWindowSize = useRef<{ width: number; height: number } | null>(null); // 记录上一次的窗口大小
+  const lastWindowSize = useRef<{ width: number; height: number } | null>(null);
   useGlobalShortcuts();
 
   useEffect(() => {
