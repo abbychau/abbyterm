@@ -7,7 +7,6 @@ import { invoke } from '@tauri-apps/api/core';
 
 export function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false);
-  const lastWindowSize = useRef<{ width: number; height: number } | null>(null);
 
   useEffect(() => {
     const checkMaximized = async () => {
@@ -18,15 +17,8 @@ export function TitleBar() {
     checkMaximized();
 
     const appWindow = getCurrentWindow();
-    const unlisten = appWindow.onResized(({ payload: size }) => {
-      if (
-        lastWindowSize.current === null ||
-        lastWindowSize.current.width !== size.width ||
-        lastWindowSize.current.height !== size.height
-      ) {
-        lastWindowSize.current = { width: size.width, height: size.height };
-        checkMaximized();
-      }
+    const unlisten = appWindow.onResized(() => {
+      checkMaximized();
     });
 
     return () => {
