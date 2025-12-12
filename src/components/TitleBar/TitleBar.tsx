@@ -49,7 +49,7 @@ export function TitleBar() {
         className="flex items-center gap-2 px-1 select-none"
         onDoubleClick={handleDoubleClick}
       >
-        <img src="/hamham.png" alt="Icon" className="w-8 h-8 pointer-events-none" />
+        <img src="/hamham.png" alt="Icon" className="w-8 h-8 pointer-events-none m-1" />
         <span className="text-sm font-semibold text-gray-200 -ml-2 pointer-events-none">{activeTabTitle || 'AbbyTerm'}</span>
       </div>
 

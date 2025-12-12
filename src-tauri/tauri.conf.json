@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "AbbyTerm",
-  "version": "0.1.0",
-  "identifier": "com.abbyterm.app",
+  "version": "0.2.0",
+  "identifier": "md.abby.abbyterm",
   "build": {
     "beforeDevCommand": "vite dev",
     "beforeBuildCommand": "vite build",
@@ -28,6 +28,7 @@
     "security": {
       "csp": null,
       "capabilities": [
+        "default",
         {
           "identifier": "draggable-window",
           "windows": ["*"],

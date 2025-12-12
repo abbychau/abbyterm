@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "deb-replace": "npm run build && ./reinstall_deb.sh",
     "dev": "echo 'DO NOT RUN under VSCode.' && tauri dev",
     "build": "tauri build",
     "preview": "vite preview",
@@ -15,6 +16,7 @@
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-tabs": "^1.1.13",
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
     "@tauri-apps/plugin-opener": "^2.5.2",
     "@tauri-apps/plugin-shell": "^2.0.0",
     "class-variance-authority": "^0.7.1",

@@ -9,7 +9,9 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useTabStore } from '@/store/tabStore';
 import { WebglAddon } from 'xterm-addon-webgl';
 import { SearchAddon } from 'xterm-addon-search';
+import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { SearchBox } from './SearchBox';
+import { TerminalContextMenu } from './TerminalContextMenu';
 import 'xterm/css/xterm.css';
 
 export function Terminal({ sessionId, isActive }: TerminalProps) {
@@ -23,6 +25,68 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
   const { settings } = useSettingsStore();
   const updateTab = useTabStore((state) => state.updateTab);
   const settingsRef = useRef(settings);
+
+  const handleCopy = async () => {
+    const term = xtermRef.current;
+    if (!term) return;
+    const selection = term.getSelection();
+    if (selection) {
+      try {
+        await writeText(selection);
+        console.log('Copied to plugin clipboard');
+      } catch (e) {
+        console.warn('Plugin copy failed:', e);
+        try {
+            await navigator.clipboard.writeText(selection);
+            console.log('Copied to web clipboard');
+        } catch (e2) {
+            console.warn('Web copy failed:', e2);
+            // Fallback to execCommand
+            // We need to ensure the textarea is focused and has selection?
+            // Xterm handles this usually if we focus it.
+            document.execCommand('copy');
+        }
+      }
+    }
+  };
+
+  const handlePaste = async () => {
+    const term = xtermRef.current;
+    if (!term) return;
+    
+    const webPromise = navigator.clipboard 
+      ? navigator.clipboard.readText().catch(e => {
+          console.warn('Web clipboard read failed:', e);
+          return { error: e, type: 'web' };
+        })
+      : Promise.resolve({ error: 'API unavailable', type: 'web' });
+    
+    const pluginPromise = readText().catch(e => {
+        console.warn('Plugin clipboard read failed:', e);
+        return { error: e, type: 'plugin' };
+    });
+
+    Promise.all([pluginPromise, webPromise]).then(([pluginResult, webResult]) => {
+        if (typeof pluginResult === 'string') {
+            term.paste(pluginResult);
+        } else if (typeof webResult === 'string') {
+            term.paste(webResult);
+        } else {
+            console.error('Clipboard paste failed', pluginResult, webResult);
+            if (!document.execCommand('paste')) {
+                term.write(`\r\n[Clipboard Error] Plugin: ${pluginResult?.error}, Web: ${webResult?.error}\r\n`);
+            }
+        }
+    });
+  };
+
+  const handleSelectAll = () => {
+    xtermRef.current?.selectAll();
+  };
+
+  const handleClear = () => {
+    xtermRef.current?.clear();
+  };
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -195,15 +259,13 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
         if (selection) {
           e.preventDefault();
           e.stopPropagation();
-          navigator.clipboard.writeText(selection);
+          handleCopy();
           return false;
         }
       } else if (currentShortcut === shortcuts.paste) {
         e.preventDefault();
         e.stopPropagation();
-        navigator.clipboard.readText().then((text) => {
-          term?.paste(text);
-        });
+        handlePaste();
         return false;
       } else if (currentShortcut === shortcuts.find) {
         e.preventDefault();
@@ -362,28 +424,35 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
   }, [sessionId]);
 
   return (
-    <div
-      className="w-full h-full relative overflow-hidden"
-      style={{ backgroundColor: settings.theme.colors.background }}
+    <TerminalContextMenu
+      onCopy={handleCopy}
+      onPaste={handlePaste}
+      onSelectAll={handleSelectAll}
+      onClear={handleClear}
     >
-      {isSearchOpen && searchAddonRef.current && (
-        <SearchBox
-          searchAddon={searchAddonRef.current}
-          onClose={() => {
-            setIsSearchOpen(false);
-            xtermRef.current?.focus();
-          }}
-        />
-      )}
-      {!isInitialized && (
-        <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto mb-2"></div>
-            <p>Initializing terminal...</p>
+      <div
+        className="w-full h-full relative overflow-hidden"
+        style={{ backgroundColor: settings.theme.colors.background }}
+      >
+        {isSearchOpen && searchAddonRef.current && (
+          <SearchBox
+            searchAddon={searchAddonRef.current}
+            onClose={() => {
+              setIsSearchOpen(false);
+              xtermRef.current?.focus();
+            }}
+          />
+        )}
+        {!isInitialized && (
+          <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto mb-2"></div>
+              <p>Initializing terminal...</p>
+            </div>
           </div>
-        </div>
-      )}
-      <div ref={terminalRef} className="w-full h-full" />
-    </div>
+        )}
+        <div ref={terminalRef} className="w-full h-full" />
+      </div>
+    </TerminalContextMenu>
   );
 }

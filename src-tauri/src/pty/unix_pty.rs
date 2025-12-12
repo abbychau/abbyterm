@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use libc::{self, winsize};
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::os::unix::io::{FromRawFd, RawFd};
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command};
@@ -168,10 +168,6 @@ impl UnixPty {
         self.master_file
             .write(data)
             .context("Failed to write to PTY")
-    }
-
-    pub fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        self.master_file.read(buf)
     }
 
     pub fn try_clone_reader(&self) -> Result<File> {
