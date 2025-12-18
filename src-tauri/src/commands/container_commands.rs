@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::process::Command;
 use std::path::Path;
+use tokio::time::{timeout, Duration};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DockerContainer {
@@ -36,7 +36,7 @@ fn find_command(cmd: &str) -> String {
     }
 
     // Try to find in PATH
-    if let Ok(output) = Command::new("which").arg(cmd).output() {
+    if let Ok(output) = std::process::Command::new("which").arg(cmd).output() {
         if output.status.success() {
             if let Ok(path) = String::from_utf8(output.stdout) {
                 let path = path.trim();
@@ -52,15 +52,20 @@ fn find_command(cmd: &str) -> String {
 }
 
 #[tauri::command]
-pub fn get_docker_containers() -> Result<Vec<DockerContainer>, String> {
+pub async fn get_docker_containers() -> Result<Vec<DockerContainer>, String> {
     let docker_cmd = find_command("docker");
 
-    let output = Command::new(&docker_cmd)
-        .arg("ps")
-        .arg("--format")
-        .arg("{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Label \"com.docker.compose.project\"}}")
-        .output()
-        .map_err(|e| format!("Failed to execute docker ps ({}): {}", docker_cmd, e))?;
+    let output = timeout(
+        Duration::from_secs(10),
+        tokio::process::Command::new(&docker_cmd)
+            .arg("ps")
+            .arg("--format")
+            .arg("{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Label \"com.docker.compose.project\"}}")
+            .output()
+    )
+    .await
+    .map_err(|_| "Docker command timed out".to_string())?
+    .map_err(|e| format!("Failed to execute docker ps ({}): {}", docker_cmd, e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -97,33 +102,45 @@ pub fn get_docker_containers() -> Result<Vec<DockerContainer>, String> {
 }
 
 #[tauri::command]
-pub fn get_kubernetes_pods() -> Result<Vec<KubernetesPod>, String> {
+pub async fn get_kubernetes_pods() -> Result<Vec<KubernetesPod>, String> {
     let kubectl_cmd = find_command("kubectl");
 
-    // Get current namespace from context
-    let namespace_output = Command::new(&kubectl_cmd)
-        .arg("config")
-        .arg("view")
-        .arg("--minify")
-        .arg("--output")
-        .arg("jsonpath={..namespace}")
-        .output()
-        .ok();
+    // Get current namespace from context with timeout
+    let current_namespace = match timeout(
+        Duration::from_secs(3),
+        tokio::process::Command::new(&kubectl_cmd)
+            .arg("config")
+            .arg("view")
+            .arg("--minify")
+            .arg("--output")
+            .arg("jsonpath={..namespace}")
+            .output()
+    )
+    .await
+    {
+        Ok(Ok(output)) => String::from_utf8(output.stdout)
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "default".to_string()),
+        _ => "default".to_string(),
+    };
 
-    let current_namespace = namespace_output
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "default".to_string());
-
-    let output = Command::new(&kubectl_cmd)
-        .arg("get")
-        .arg("pods")
-        .arg("--no-headers")
-        .output()
-        .map_err(|e| format!("Failed to execute kubectl ({}): {}", kubectl_cmd, e))?;
+    // Get pods with timeout
+    let output = timeout(
+        Duration::from_secs(10),
+        tokio::process::Command::new(&kubectl_cmd)
+            .arg("get")
+            .arg("pods")
+            .arg("--no-headers")
+            .output()
+    )
+    .await
+    .map_err(|_| "Kubectl command timed out. Check your cluster connection.".to_string())?
+    .map_err(|e| format!("Failed to execute kubectl ({}): {}", kubectl_cmd, e))?;
 
     if !output.status.success() {
-        return Err("Kubectl command failed. Is kubectl configured?".to_string());
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Kubectl command failed: {}", stderr));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
