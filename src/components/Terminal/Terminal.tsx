@@ -4,6 +4,7 @@ import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { open } from '@tauri-apps/plugin-shell';
 import { TerminalProps } from '@/types/terminal';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useTabStore } from '@/store/tabStore';
@@ -193,7 +194,12 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
 
     // Add addons
     const fitAddon = new FitAddon();
-    const webLinksAddon = new WebLinksAddon();
+    const webLinksAddon = new WebLinksAddon((event: MouseEvent, uri: string) => {
+      // Open URL in default browser using Tauri shell API
+      open(uri).catch((err) => {
+        console.error('Failed to open URL:', uri, err);
+      });
+    });
     const searchAddon = new SearchAddon();
 
     term.loadAddon(fitAddon);
@@ -201,7 +207,7 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
     term.loadAddon(searchAddon);
     searchAddonRef.current = searchAddon;
 
-    // Handle title change from OSC sequences
+    // Handle title change from OSC sequences (including OSC 7 for directory)
     term.onTitleChange((title) => {
       const tabs = useTabStore.getState().tabs;
       const tab = tabs.find((t) => t.sessionId === sessionId);
@@ -209,6 +215,31 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
         updateTab(tab.id, { title });
       }
     });
+
+    // Periodically fetch the current working directory from the shell process
+    // Only for actual local terminals, not for docker/k8s exec sessions
+    const cwdInterval = setInterval(async () => {
+      try {
+        const tabs = useTabStore.getState().tabs;
+        const tab = tabs.find((t) => t.sessionId === sessionId);
+
+        // Skip CWD polling for Docker and K8s tabs
+        if (!tab || tab.type !== 'local') return;
+        if (tab.title?.startsWith('Docker:') || tab.title?.startsWith('K8s:') || tab.title?.startsWith('SSH:')) {
+          return;
+        }
+
+        const cwd = await invoke<string>('get_session_cwd', { sessionId });
+
+        if (cwd && tab.title !== cwd) {
+          // Show full path
+          updateTab(tab.id, { title: cwd });
+        }
+      } catch (err) {
+        // Silently ignore errors - process might not exist or permission denied
+        console.debug('Failed to get session cwd:', err);
+      }
+    }, 2000); // Poll every 2 seconds
 
     // Handle prompt detection for title update
     term.onCursorMove(() => {
@@ -218,22 +249,43 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
 
       const buffer = term?.buffer.active;
       if (!buffer) return;
-      
+
       const cursorY = buffer.cursorY;
       const line = buffer.getLine(cursorY)?.translateToString().trimEnd();
 
       if (!line) return;
 
-      // Regex for user@host:path$
-      // e.g. abbyc@mqtt1:~$ 
-      const promptRegex = /^(.+@.+:.+)([$#%])\s*$/;
-      const match = line.match(promptRegex);
+      // Try different prompt formats to extract directory/context
+      let newTitle: string | null = null;
 
-      if (match) {
-        const newTitle = match[1];
-        if (tab.title !== newTitle) {
-          updateTab(tab.id, { title: newTitle });
+      // Format 1: user@host:path$ or user@host:path#
+      const format1 = line.match(/^(.+@.+:.+?)([$#%])\s*$/);
+      if (format1) {
+        newTitle = format1[1];
+      }
+
+      // Format 2: path$ or path# (simple prompt with just path)
+      if (!newTitle) {
+        const format2 = line.match(/^([~\/][\w\-\.\/]*)([$#%])\s*$/);
+        if (format2) {
+          newTitle = format2[1];
         }
+      }
+
+      // Format 3: user@host path$ (space separated)
+      if (!newTitle) {
+        const format3 = line.match(/^(.+@.+)\s+([~\/][\w\-\.\/]*)([$#%])\s*$/);
+        if (format3) {
+          newTitle = format3[2]; // Just use the path part
+        }
+      }
+
+      // If we detected a title and it's different from current, update it
+      // If tab.type is 'local' and title is still default, use "Local" as fallback
+      if (newTitle && tab.title !== newTitle) {
+        updateTab(tab.id, { title: newTitle });
+      } else if (!newTitle && tab.type === 'local' && (tab.title === 'Terminal' || tab.title === 'Local')) {
+        // Keep "Local" as is, don't change
       }
     });
 
@@ -399,11 +451,12 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       isMounted = false;
       isDisposed = true;
 
-      // Clear timeouts
+      // Clear timeouts and intervals
       clearTimeout(openTimeout);
       if (term && (term as any)._fitTimeout) {
         clearTimeout((term as any)._fitTimeout);
       }
+      clearInterval(cwdInterval);
 
       resizeObserver.disconnect();
 

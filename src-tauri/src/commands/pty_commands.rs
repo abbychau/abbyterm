@@ -12,7 +12,20 @@ pub async fn create_pty_session(
     manager: State<'_, PtyManager>,
     app: AppHandle,
 ) -> Result<String, String> {
-    let cwd_path = cwd.map(std::path::PathBuf::from);
+    // Expand tilde in cwd path
+    let cwd_path = cwd.map(|path| {
+        if path.starts_with("~/") || path == "~" {
+            let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+            let expanded = if path == "~" {
+                home
+            } else {
+                path.replacen("~", &home, 1)
+            };
+            std::path::PathBuf::from(expanded)
+        } else {
+            std::path::PathBuf::from(path)
+        }
+    });
     let id = manager
         .create_session(shell, args, cwd_path, cols, rows, app)
         .await
@@ -48,4 +61,10 @@ pub async fn pty_resize(
 pub async fn pty_kill(session_id: String, manager: State<'_, PtyManager>) -> Result<(), String> {
     let id = Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
     manager.kill(id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_session_cwd(session_id: String, manager: State<'_, PtyManager>) -> Result<String, String> {
+    let id = Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    manager.get_cwd(id).await.map_err(|e| e.to_string())
 }

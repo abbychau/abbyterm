@@ -24,6 +24,7 @@ const defaultSettings: Settings = {
   cursorBlink: true,
   scrollback: 10000,
   shell: '/bin/bash',
+  defaultCwd: '~',
   useWebGL: false,
   shortcuts: defaultShortcuts,
 };
@@ -46,7 +47,7 @@ export const useSettingsStore = create<SettingsStore>()(
     {
       name: 'abbyterm-settings',
       merge: (persistedState: any, currentState) => {
-        // Deep merge settings to ensure new fields (like shortcuts) are added
+        // Deep merge settings to ensure new fields (like shortcuts, defaultCwd) are added
         // to existing persisted state
         const mergedSettings = {
           ...defaultSettings,
@@ -55,6 +56,8 @@ export const useSettingsStore = create<SettingsStore>()(
             ...defaultSettings.shortcuts,
             ...(persistedState?.settings?.shortcuts || {}),
           },
+          // Ensure defaultCwd is set even for existing users
+          defaultCwd: persistedState?.settings?.defaultCwd || defaultSettings.defaultCwd,
         };
 
         return {

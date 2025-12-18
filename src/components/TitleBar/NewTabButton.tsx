@@ -3,6 +3,7 @@ import { Plus, MonitorDot, ServerIcon } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { invoke } from '@tauri-apps/api/core';
 import { useTabStore } from '@/store/tabStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { v4 as uuidv4 } from 'uuid';
 
 interface SshHost {
@@ -15,7 +16,9 @@ interface SshHost {
 
 export function NewTabButton() {
   const { addTab } = useTabStore();
+  const settings = useSettingsStore((state) => state.settings);
   const [sshHosts, setSshHosts] = useState<SshHost[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     loadSshHosts();
@@ -38,7 +41,7 @@ export function NewTabButton() {
       const sessionId = await invoke<string>('create_pty_session', {
         shell: null,
         args: null,
-        cwd: null,
+        cwd: settings.defaultCwd || null,
         cols: 80,
         rows: 24,
       });
@@ -46,7 +49,7 @@ export function NewTabButton() {
       // Add tab to store
       addTab({
         id: tabId,
-        title: 'Terminal',
+        title: 'Local',
         sessionId,
         type: 'local',
       });
@@ -102,7 +105,7 @@ export function NewTabButton() {
   };
 
   return (
-    <DropdownMenu.Root modal={false}>
+    <DropdownMenu.Root modal={false} onOpenChange={setIsOpen}>
       <DropdownMenu.Trigger asChild>
         <button
           className="px-3 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition-colors"
@@ -116,7 +119,7 @@ export function NewTabButton() {
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          className="min-w-[220px] bg-gray-800 rounded-md shadow-lg p-1 border border-gray-700 z-50 max-h-[400px] overflow-y-auto"
+          className="min-w-[280px] bg-gray-800 rounded-md shadow-lg p-1 border border-gray-700 z-50 max-h-[500px] overflow-y-auto"
           align="start"
           sideOffset={5}
         >

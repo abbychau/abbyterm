@@ -69,6 +69,22 @@ impl PtyManager {
         Ok(())
     }
 
+    pub async fn get_cwd(&self, id: Uuid) -> Result<String> {
+        let sessions = self.sessions.lock().await;
+        if let Some(session) = sessions.get(&id) {
+            let pid = session.get_child_pid();
+            //eprintln!("Getting cwd for PID: {}", pid);
+            let result = get_process_cwd(pid as i32);
+            // match &result {
+            //     Ok(cwd) => eprintln!("Got cwd: {}", cwd),
+            //     Err(e) => eprintln!("Error getting cwd: {}", e),
+            // }
+            result
+        } else {
+            Err(anyhow::anyhow!("Session not found"))
+        }
+    }
+
     fn start_output_task(
         &self,
         id: Uuid,
@@ -156,6 +172,48 @@ impl PtyManager {
             let _ = app.emit(&format!("pty-exit-{}", id), ());
         });
     }
+}
+
+#[cfg(target_os = "macos")]
+fn get_process_cwd(pid: i32) -> Result<String> {
+    use std::process::Command;
+
+    // Use lsof to get the current working directory
+    let output = Command::new("lsof")
+        .args(&["-p", &pid.to_string(), "-a", "-d", "cwd", "-Fn"])
+        .output()
+        .map_err(|e| anyhow::anyhow!("Failed to run lsof: {}", e))?;
+
+    if !output.status.success() {
+        return Err(anyhow::anyhow!("lsof command failed"));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse lsof output - format is:
+    // p<pid>
+    // n<path>
+    for line in stdout.lines() {
+        if line.starts_with('n') {
+            let path = &line[1..]; // Skip the 'n' prefix
+            return Ok(path.to_string());
+        }
+    }
+
+    Err(anyhow::anyhow!("Could not find cwd in lsof output"))
+}
+
+#[cfg(target_os = "linux")]
+fn get_process_cwd(pid: i32) -> Result<String> {
+    let cwd_path = format!("/proc/{}/cwd", pid);
+    std::fs::read_link(&cwd_path)
+        .map(|p| p.display().to_string())
+        .map_err(|e| anyhow::anyhow!("Failed to read /proc/{}/cwd: {}", pid, e))
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+fn get_process_cwd(_pid: i32) -> Result<String> {
+    Err(anyhow::anyhow!("Getting process CWD is not supported on this platform"))
 }
 
 impl Default for PtyManager {
