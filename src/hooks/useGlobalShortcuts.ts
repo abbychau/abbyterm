@@ -69,7 +69,21 @@ export function useGlobalShortcuts() {
         }
       } else if (currentShortcut === shortcuts.closeTab) {
         e.preventDefault();
-        if (activeTabId) removeTab(activeTabId);
+        if (activeTabId) {
+          const activeTab = tabs.find((t) => t.id === activeTabId);
+
+          // Keep behavior consistent with clicking the tab's close button:
+          // kill the underlying PTY session first.
+          if (activeTab?.sessionId) {
+            try {
+              await invoke('pty_kill', { sessionId: activeTab.sessionId });
+            } catch (err) {
+              console.error('Failed to kill PTY session (closeTab shortcut):', err);
+            }
+          }
+
+          removeTab(activeTabId);
+        }
       } else if (currentShortcut === shortcuts.nextTab) {
         e.preventDefault();
         const currentIndex = tabs.findIndex(t => t.id === activeTabId);

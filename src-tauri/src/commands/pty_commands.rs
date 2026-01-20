@@ -3,6 +3,29 @@ use tauri::{AppHandle, State};
 use uuid::Uuid;
 
 #[tauri::command]
+pub async fn create_ratel_session(
+    host: String,
+    port: u16,
+    cols: u16,
+    rows: u16,
+    manager: State<'_, PtyManager>,
+    app: AppHandle,
+) -> Result<String, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let exe = exe.to_string_lossy().to_string();
+
+    let addr = format!("{}:{}", host.trim(), port);
+    let args = vec!["--ratel".to_string(), addr];
+
+    let id = manager
+        .create_session(Some(exe), Some(args), None, cols, rows, app)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(id.to_string())
+}
+
+#[tauri::command]
 pub async fn create_pty_session(
     shell: Option<String>,
     args: Option<Vec<String>>,

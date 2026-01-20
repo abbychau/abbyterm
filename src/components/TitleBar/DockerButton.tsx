@@ -30,6 +30,24 @@ export function DockerButton() {
     return `'${p.replace(/'/g, `'"'"'`)}'`;
   };
 
+  const getHostShellForExec = () => (settings.shell || '/bin/sh').trim() || '/bin/sh';
+
+  const getHostShellArgsForExec = (shellPath: string) => {
+    // macOS GUI apps often have a limited PATH; a login shell helps load user PATH.
+    if (shellPath.endsWith('/bash') || shellPath.endsWith('/zsh')) return ['-l'];
+    return null;
+  };
+
+  const maybePrefixPathForDocker = () => {
+    // Helps Docker be found on macOS (Homebrew + Docker Desktop), and is harmless elsewhere.
+    // We only do this when user didn't provide an explicit docker path.
+    const p = (settings.dockerExecutablePath || '').trim();
+    if (p) return '';
+
+    const extra = ['/usr/local/bin', '/opt/homebrew/bin', '/Applications/Docker.app/Contents/Resources/bin'];
+    return `export PATH="$PATH:${extra.join(':')}"; `;
+  };
+
   // Load containers when dropdown opens
   useEffect(() => {
     if (isOpen) {
@@ -59,10 +77,13 @@ export function DockerButton() {
     try {
       const tabId = uuidv4();
 
+      const hostShell = getHostShellForExec();
+      const hostArgs = getHostShellArgsForExec(hostShell);
+
       // Create PTY session with docker exec command
       const sessionId = await invoke<string>('create_pty_session', {
-        shell: '/bin/sh',
-        args: null,
+        shell: hostShell,
+        args: hostArgs,
         cwd: null,
         cols: 80,
         rows: 24,
@@ -70,7 +91,7 @@ export function DockerButton() {
 
       // Execute docker exec command
       const dockerBin = getDockerExecutable();
-      const dockerCommand = `${dockerBin} exec -it ${container.id} /bin/sh\n`;
+      const dockerCommand = `${maybePrefixPathForDocker()}${dockerBin} exec -it ${container.id} /bin/sh\n`;
       await invoke('pty_write', {
         sessionId,
         data: dockerCommand,

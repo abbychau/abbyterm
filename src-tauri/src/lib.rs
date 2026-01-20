@@ -1,6 +1,7 @@
 mod commands;
 mod pty;
 mod ssh_config;
+mod ratel_mode;
 
 use commands::pty_commands::*;
 use commands::ssh_commands::*;
@@ -10,6 +11,8 @@ use commands::container_commands::*;
 use pty::manager::PtyManager;
 use std::sync::Mutex;
 use tauri::State;
+
+pub use ratel_mode::run_ratel;
 
 struct InitialCliArgs {
     args: Mutex<Option<Vec<String>>>,
@@ -51,6 +54,7 @@ pub fn run() {
             is_maximized,
             // PTY commands
             create_pty_session,
+            create_ratel_session,
             pty_write,
             pty_resize,
             pty_kill,

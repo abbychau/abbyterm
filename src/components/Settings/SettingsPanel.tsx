@@ -4,6 +4,8 @@ import { defaultThemes, Shortcuts } from '@/types/settings';
 import { invoke } from '@tauri-apps/api/core';
 import { ShortcutRecorder } from './ShortcutRecorder';
 import { RotateCcw } from 'lucide-react';
+import { useTabStore } from '@/store/tabStore';
+import { v4 as uuidv4 } from 'uuid';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -12,8 +14,31 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { settings, updateSettings, setTheme, setAppTheme } = useSettingsStore();
-  const [activeTab, setActiveTab] = useState<'appearance' | 'terminal' | 'shortcuts' | 'advanced'>('appearance');
+  const { addTab } = useTabStore();
+  const [activeTab, setActiveTab] = useState<'appearance' | 'terminal' | 'shortcuts' | 'advanced' | 'plugins'>('appearance');
   const [availableShells, setAvailableShells] = useState<string[]>([]);
+
+  const openRatelTab = async () => {
+    const host = '192.252.182.94';
+    const port = 9999;
+
+    const sessionId = await invoke<string>('create_ratel_session', {
+      host,
+      port,
+      cols: 80,
+      rows: 24,
+    });
+
+    addTab({
+      id: uuidv4(),
+      title: `Ratel: ${host}:${port}`,
+      sessionId,
+      // Treat like non-local to avoid CWD polling/title overrides.
+      type: 'ssh',
+    });
+
+    onClose();
+  };
 
   useEffect(() => {
     if (isOpen && activeTab === 'advanced') {
@@ -78,6 +103,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               { id: 'appearance', label: 'Appearance' },
               { id: 'terminal', label: 'Terminal' },
               { id: 'shortcuts', label: 'Shortcuts' },
+              { id: 'plugins', label: 'Plugins' },
               { id: 'advanced', label: 'Advanced' },
             ].map((tab) => (
               <button
@@ -360,6 +386,35 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   {renderShortcutRow('Close Tab', 'closeTab')}
                   {renderShortcutRow('Next Tab', 'nextTab')}
                   {renderShortcutRow('Previous Tab', 'prevTab')}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'plugins' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium">Plugins</h3>
+                  <p className="text-sm app-text-muted mt-1">
+                    Quick-connect tools that open in a new tab.
+                  </p>
+                </div>
+
+                <div className="border app-border app-surface p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="font-medium">Ratel</div>
+                      <div className="text-sm app-text-muted mt-1">
+                        Connects to <span className="font-mono">192.252.182.94:9999</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => void openRatelTab()}
+                      className="px-4 py-2 bg-[color:var(--app-accent)] text-[color:var(--app-on-accent)] hover:opacity-90 transition-colors"
+                    >
+                      Open
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
