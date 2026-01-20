@@ -314,6 +314,127 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
         // Open terminal in DOM
         term.open(terminalElement);
 
+        const openedTerm = term;
+
+        // Click-to-move-cursor: translate mouse click to left/right arrow sequences.
+        // This cannot move the OS mouse pointer; it moves the shell's editing cursor (readline).
+        const sendToPty = (data: string) => {
+          invoke('pty_write', { sessionId, data }).catch((err) => {
+            console.error('Failed to write to PTY:', err);
+          });
+        };
+
+        const getCellSize = () => {
+          const core = (openedTerm as any)?._core;
+          const dims = core?._renderService?.dimensions;
+          const width = dims?.css?.cell?.width ?? dims?.actualCellWidth;
+          const height = dims?.css?.cell?.height ?? dims?.actualCellHeight;
+          if (typeof width === 'number' && width > 0 && typeof height === 'number' && height > 0) {
+            return { width, height };
+          }
+          return null;
+        };
+
+        const getViewportCellFromMouseEvent = (e: MouseEvent) => {
+          const cell = getCellSize();
+          const root = openedTerm.element as HTMLElement | undefined;
+          if (!cell || !root) return null;
+
+          const screen = root.querySelector('.xterm-screen') as HTMLElement | null;
+          const rect = (screen ?? root).getBoundingClientRect();
+
+          const relX = e.clientX - rect.left;
+          const relY = e.clientY - rect.top;
+          if (relX < 0 || relY < 0) return null;
+
+          const col0 = Math.floor(relX / cell.width);
+          const row0 = Math.floor(relY / cell.height);
+          if (col0 < 0 || row0 < 0) return null;
+          if (col0 >= openedTerm.cols || row0 >= openedTerm.rows) return null;
+          return { col0, row0 };
+        };
+
+        const getWrappedBlockStartAbs = (absLine: number) => {
+          const buffer = openedTerm.buffer.active;
+          if (!buffer) return null;
+          let start = absLine;
+          while (start > 0) {
+            const line = buffer.getLine(start) as any;
+            if (!line?.isWrapped) break;
+            start -= 1;
+          }
+          return start;
+        };
+
+        let mouseDownAt: { x: number; y: number } | null = null;
+        let mouseMoved = false;
+
+        const onMouseDown = (e: MouseEvent) => {
+          if (e.button !== 0) return; // left click only
+          mouseDownAt = { x: e.clientX, y: e.clientY };
+          mouseMoved = false;
+        };
+
+        const onMouseMove = (e: MouseEvent) => {
+          if (!mouseDownAt) return;
+          const dx = Math.abs(e.clientX - mouseDownAt.x);
+          const dy = Math.abs(e.clientY - mouseDownAt.y);
+          if (dx > 3 || dy > 3) mouseMoved = true;
+        };
+
+        const onMouseUp = (e: MouseEvent) => {
+          if (e.button !== 0) return;
+          if (e.ctrlKey || e.altKey || e.metaKey) return;
+          if (mouseMoved) return;
+          if ((openedTerm as any).isDisposed) return;
+
+          // If user selected text, don't reposition the shell cursor.
+          if (openedTerm.hasSelection()) return;
+
+          const pos = getViewportCellFromMouseEvent(e);
+          if (!pos) return;
+
+          const buffer = openedTerm.buffer.active;
+          const baseY = buffer.baseY;
+
+          const absCursorLine = baseY + buffer.cursorY;
+          const absClickLine = baseY + pos.row0;
+
+          const startCursor = getWrappedBlockStartAbs(absCursorLine);
+          const startClick = getWrappedBlockStartAbs(absClickLine);
+          if (startCursor == null || startClick == null) return;
+          if (startCursor !== startClick) return; // only within the current wrapped input block
+
+          const cursorOffset = (absCursorLine - startCursor) * openedTerm.cols + buffer.cursorX;
+          const clickOffset = (absClickLine - startCursor) * openedTerm.cols + pos.col0;
+          const delta = clickOffset - cursorOffset;
+          if (delta === 0) return;
+
+          openedTerm.focus();
+          const n = Math.abs(delta);
+
+          // IMPORTANT: readline expects *key sequences* for arrows, not CSI cursor-movement with numeric params.
+          // Normal cursor keys: ESC [ D / ESC [ C
+          // Application cursor keys (DECCKM): ESC O D / ESC O C
+          const appCursor = (openedTerm as any).modes?.applicationCursorKeysMode === true;
+          const left = appCursor ? '\x1bOD' : '\x1b[D';
+          const right = appCursor ? '\x1bOC' : '\x1b[C';
+          sendToPty((delta < 0 ? left : right).repeat(n));
+        };
+
+        const rootEl = openedTerm.element as HTMLElement | null;
+        if (rootEl) {
+          rootEl.addEventListener('mousedown', onMouseDown);
+          rootEl.addEventListener('mousemove', onMouseMove);
+          rootEl.addEventListener('mouseup', onMouseUp);
+
+          (openedTerm as any)._clickToMoveCleanup = () => {
+            rootEl.removeEventListener('mousedown', onMouseDown);
+            rootEl.removeEventListener('mousemove', onMouseMove);
+            rootEl.removeEventListener('mouseup', onMouseUp);
+          };
+        }
+
         // Focus the terminal so it can receive input
         term.focus();
 
@@ -413,6 +534,10 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       // Safely dispose terminal
       if (term) {
         try {
+          const cleanupClickToMove = (term as any)._clickToMoveCleanup;
+          if (typeof cleanupClickToMove === 'function') {
+            cleanupClickToMove();
+          }
           if (!(term as any).isDisposed) {
             term.dispose();
           }
