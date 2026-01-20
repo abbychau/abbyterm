@@ -4,6 +4,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { invoke } from '@tauri-apps/api/core';
 import { useTabStore } from '@/store/tabStore';
 import { v4 as uuidv4 } from 'uuid';
+import { useSettingsStore } from '@/store/settingsStore';
 
 interface DockerContainer {
   id: string;
@@ -15,10 +16,19 @@ interface DockerContainer {
 
 export function DockerButton() {
   const { addTab } = useTabStore();
+  const settings = useSettingsStore((state) => state.settings);
   const [dockerContainers, setDockerContainers] = useState<DockerContainer[]>([]);
   const [isLoadingDocker, setIsLoadingDocker] = useState(false);
   const [dockerError, setDockerError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+
+  const getDockerExecutable = () => {
+    const p = (settings.dockerExecutablePath || '').trim();
+    if (!p) return 'docker';
+    // Basic /bin/sh safe quoting for paths with spaces.
+    if (/^[A-Za-z0-9_./-]+$/.test(p)) return p;
+    return `'${p.replace(/'/g, `'"'"'`)}'`;
+  };
 
   // Load containers when dropdown opens
   useEffect(() => {
@@ -31,7 +41,9 @@ export function DockerButton() {
     setIsLoadingDocker(true);
     setDockerError(null);
     try {
-      const containers = await invoke<DockerContainer[]>('get_docker_containers');
+      const containers = await invoke<DockerContainer[]>('get_docker_containers', {
+        dockerPath: settings.dockerExecutablePath || null,
+      });
       console.log('Docker containers loaded:', containers);
       setDockerContainers(containers);
     } catch (err) {
@@ -57,7 +69,8 @@ export function DockerButton() {
       });
 
       // Execute docker exec command
-      const dockerCommand = `docker exec -it ${container.id} /bin/sh\n`;
+      const dockerBin = getDockerExecutable();
+      const dockerCommand = `${dockerBin} exec -it ${container.id} /bin/sh\n`;
       await invoke('pty_write', {
         sessionId,
         data: dockerCommand,

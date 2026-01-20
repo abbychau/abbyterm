@@ -45,7 +45,9 @@ function App() {
         // Auto-hide Kubectl button if kubectl isn't runnable.
         // (Do not gate this behind the button being shown; we want the first-run experience to be correct.)
         try {
-          const kubectlOk = await invoke<boolean>('check_kubectl_available');
+          const kubectlOk = await invoke<boolean>('check_kubectl_available', {
+            kubectlPath: settings.kubectlExecutablePath || null,
+          });
           const current = useSettingsStore.getState().settings;
           if (!kubectlOk && current.showKubectlButton) {
             useSettingsStore.getState().updateSettings({ showKubectlButton: false });
@@ -57,7 +59,9 @@ function App() {
 
         // Auto-hide Docker button if docker isn't runnable.
         try {
-          const dockerOk = await invoke<boolean>('check_docker_available');
+          const dockerOk = await invoke<boolean>('check_docker_available', {
+            dockerPath: settings.dockerExecutablePath || null,
+          });
           const current = useSettingsStore.getState().settings;
           if (!dockerOk && current.showDockerButton) {
             useSettingsStore.getState().updateSettings({ showDockerButton: false });

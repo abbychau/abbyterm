@@ -334,6 +334,36 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   </p>
                 </div>
 
+                <div className="pt-2 border-t border-gray-700/60" />
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Docker Executable Path (Optional)</label>
+                  <input
+                    type="text"
+                    value={settings.dockerExecutablePath}
+                    onChange={(e) => updateSettings({ dockerExecutablePath: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    placeholder="/usr/bin/docker"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Leave empty to use PATH. Useful when Docker isn't on PATH.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Kubectl Executable Path (Optional)</label>
+                  <input
+                    type="text"
+                    value={settings.kubectlExecutablePath}
+                    onChange={(e) => updateSettings({ kubectlExecutablePath: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    placeholder="/usr/local/bin/kubectl"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Leave empty to use PATH. Useful when kubectl isn't on PATH.
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <div>
                     <label className="block text-sm font-medium">WebGL Renderer (Experimental)</label>

@@ -51,9 +51,19 @@ fn find_command(cmd: &str) -> String {
     cmd.to_string()
 }
 
+fn resolve_command(cmd: &str, override_path: Option<String>) -> String {
+    if let Some(p) = override_path {
+        let trimmed = p.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+    find_command(cmd)
+}
+
 #[tauri::command]
-pub async fn check_kubectl_available() -> bool {
-    let kubectl_cmd = find_command("kubectl");
+pub async fn check_kubectl_available(kubectl_path: Option<String>) -> bool {
+    let kubectl_cmd = resolve_command("kubectl", kubectl_path);
     let output = timeout(
         Duration::from_secs(3),
         tokio::process::Command::new(&kubectl_cmd)
@@ -70,8 +80,8 @@ pub async fn check_kubectl_available() -> bool {
 }
 
 #[tauri::command]
-pub async fn check_docker_available() -> bool {
-    let docker_cmd = find_command("docker");
+pub async fn check_docker_available(docker_path: Option<String>) -> bool {
+    let docker_cmd = resolve_command("docker", docker_path);
     let output = timeout(
         Duration::from_secs(3),
         tokio::process::Command::new(&docker_cmd)
@@ -89,8 +99,8 @@ pub async fn check_docker_available() -> bool {
 }
 
 #[tauri::command]
-pub async fn get_docker_containers() -> Result<Vec<DockerContainer>, String> {
-    let docker_cmd = find_command("docker");
+pub async fn get_docker_containers(docker_path: Option<String>) -> Result<Vec<DockerContainer>, String> {
+    let docker_cmd = resolve_command("docker", docker_path);
 
     let output = timeout(
         Duration::from_secs(10),
@@ -139,8 +149,8 @@ pub async fn get_docker_containers() -> Result<Vec<DockerContainer>, String> {
 }
 
 #[tauri::command]
-pub async fn get_kubernetes_pods() -> Result<Vec<KubernetesPod>, String> {
-    let kubectl_cmd = find_command("kubectl");
+pub async fn get_kubernetes_pods(kubectl_path: Option<String>) -> Result<Vec<KubernetesPod>, String> {
+    let kubectl_cmd = resolve_command("kubectl", kubectl_path);
 
     // Get current namespace from context with timeout
     let current_namespace = match timeout(

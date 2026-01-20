@@ -4,6 +4,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { invoke } from '@tauri-apps/api/core';
 import { useTabStore } from '@/store/tabStore';
 import { v4 as uuidv4 } from 'uuid';
+import { useSettingsStore } from '@/store/settingsStore';
 
 interface KubernetesPod {
   name: string;
@@ -14,10 +15,18 @@ interface KubernetesPod {
 
 export function K8sButton() {
   const { addTab } = useTabStore();
+  const settings = useSettingsStore((state) => state.settings);
   const [kubernetesPods, setKubernetesPods] = useState<KubernetesPod[]>([]);
   const [isLoadingK8s, setIsLoadingK8s] = useState(false);
   const [k8sError, setK8sError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+
+  const getKubectlExecutable = () => {
+    const p = (settings.kubectlExecutablePath || '').trim();
+    if (!p) return 'kubectl';
+    if (/^[A-Za-z0-9_./-]+$/.test(p)) return p;
+    return `'${p.replace(/'/g, `'"'"'`)}'`;
+  };
 
   // Load pods when dropdown opens
   useEffect(() => {
@@ -30,7 +39,9 @@ export function K8sButton() {
     setIsLoadingK8s(true);
     setK8sError(null);
     try {
-      const pods = await invoke<KubernetesPod[]>('get_kubernetes_pods');
+      const pods = await invoke<KubernetesPod[]>('get_kubernetes_pods', {
+        kubectlPath: settings.kubectlExecutablePath || null,
+      });
       console.log('Kubernetes pods loaded:', pods);
       setKubernetesPods(pods);
     } catch (err) {
@@ -56,7 +67,8 @@ export function K8sButton() {
       });
 
       // Execute kubectl exec command
-      const kubectlCommand = `kubectl exec -it -n ${pod.namespace} ${pod.name} -- /bin/sh\n`;
+      const kubectlBin = getKubectlExecutable();
+      const kubectlCommand = `${kubectlBin} exec -it -n ${pod.namespace} ${pod.name} -- /bin/sh\n`;
       await invoke('pty_write', {
         sessionId,
         data: kubectlCommand,

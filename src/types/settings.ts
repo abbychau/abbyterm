@@ -35,6 +35,8 @@ export interface Settings {
   useWebGL: boolean;
   showDockerButton: boolean;
   showKubectlButton: boolean;
+  dockerExecutablePath: string;
+  kubectlExecutablePath: string;
   shortcuts: Shortcuts;
 }
 

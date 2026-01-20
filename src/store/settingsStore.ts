@@ -28,6 +28,8 @@ const defaultSettings: Settings = {
   useWebGL: false,
   showDockerButton: true,
   showKubectlButton: true,
+  dockerExecutablePath: '',
+  kubectlExecutablePath: '',
   shortcuts: defaultShortcuts,
 };
 
