@@ -279,6 +279,20 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   </p>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium mb-2">Default Directory</label>
+                  <input
+                    type="text"
+                    value={settings.defaultCwd}
+                    onChange={(e) => updateSettings({ defaultCwd: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    placeholder="~"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Starting directory for new shell sessions. Use ~ for home directory.
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <div>
                     <label className="block text-sm font-medium">WebGL Renderer (Experimental)</label>

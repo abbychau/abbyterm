@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { WindowControls } from './WindowControls';
 import { MenuButton } from './MenuButton';
 import { NewTabButton } from './NewTabButton';
+import { DockerButton } from './DockerButton';
+import { K8sButton } from './K8sButton';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 import { useTabStore } from '@/store/tabStore';
@@ -63,6 +65,8 @@ export function TitleBar() {
       {/* Right section - Buttons (not draggable) */}
       <div className="flex items-center gap-1">
         <NewTabButton />
+        <DockerButton />
+        <K8sButton />
         <MenuButton />
       </div>
       <div className="w-px h-4 bg-gray-700 mx-1" />

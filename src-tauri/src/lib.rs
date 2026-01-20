@@ -6,6 +6,7 @@ use commands::pty_commands::*;
 use commands::ssh_commands::*;
 use commands::window_commands::*;
 use commands::shell_commands::*;
+use commands::container_commands::*;
 use pty::manager::PtyManager;
 use std::sync::Mutex;
 use tauri::State;
@@ -53,10 +54,14 @@ pub fn run() {
             pty_write,
             pty_resize,
             pty_kill,
+            get_session_cwd,
             // SSH commands
             get_ssh_hosts,
             // Shell commands
             get_available_shells,
+            // Container commands
+            get_docker_containers,
+            get_kubernetes_pods,
             // CLI args
             get_initial_args,
         ])

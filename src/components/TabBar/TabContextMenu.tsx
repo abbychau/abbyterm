@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTabStore } from '@/store/tabStore';
 import { invoke } from '@tauri-apps/api/core';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 
 interface TabContextMenuProps {
   x: number;
@@ -13,6 +14,11 @@ interface TabContextMenuProps {
 export function TabContextMenu({ x, y, tabId, sessionId, onClose }: TabContextMenuProps) {
   const { tabs, removeTab } = useTabStore();
   const menuRef = useRef<HTMLDivElement>(null);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'success' | 'error'>('idle');
+
+  const currentTab = tabs.find((t) => t.id === tabId);
+  const isDocker = currentTab?.title.startsWith('Docker:');
+  const isK8s = currentTab?.title.startsWith('K8s:');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -66,12 +72,73 @@ export function TabContextMenu({ x, y, tabId, sessionId, onClose }: TabContextMe
     onClose();
   };
 
+  const handleCopyWorkingDirectory = async () => {
+    setCopyStatus('copying');
+    try {
+      let textToCopy: string;
+
+      if (isDocker) {
+        // Extract container name from "Docker: container-name"
+        textToCopy = currentTab?.title.replace('Docker: ', '') || '';
+      } else if (isK8s) {
+        // Extract pod name from "K8s: namespace/pod-name"
+        const parts = currentTab?.title.replace('K8s: ', '').split('/') || [];
+        textToCopy = parts[parts.length - 1] || ''; // Get the pod name (last part)
+      } else {
+        // For local terminals, get the actual CWD
+        textToCopy = await invoke<string>('get_session_cwd', { sessionId });
+      }
+
+      await writeText(textToCopy);
+      setCopyStatus('success');
+
+      // Reset status after 1.5 seconds
+      setTimeout(() => {
+        setCopyStatus('idle');
+        onClose();
+      }, 1500);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      setCopyStatus('error');
+
+      // Reset status after 1.5 seconds
+      setTimeout(() => {
+        setCopyStatus('idle');
+      }, 1500);
+    }
+  };
+
+  const getCopyButtonText = () => {
+    if (copyStatus === 'copying') return 'Copying...';
+    if (copyStatus === 'success') return 'Copied!';
+    if (copyStatus === 'error') return 'Failed to copy';
+
+    // Default state - show appropriate text based on tab type
+    if (isDocker) return 'Copy Container Name';
+    if (isK8s) return 'Copy Pod Name';
+    return 'Copy Working Directory';
+  };
+
   return (
     <div
       ref={menuRef}
       className="fixed z-50 w-48 bg-gray-800 border border-gray-700 rounded-md shadow-lg py-1 text-sm text-gray-200"
       style={{ top: y, left: x }}
     >
+      <button
+        className={`w-full text-left px-4 py-2 transition-colors ${
+          copyStatus === 'success'
+            ? 'bg-green-700 hover:bg-green-600'
+            : copyStatus === 'error'
+            ? 'bg-red-700 hover:bg-red-600'
+            : 'hover:bg-gray-700'
+        }`}
+        onClick={handleCopyWorkingDirectory}
+        disabled={copyStatus === 'copying'}
+      >
+        {getCopyButtonText()}
+      </button>
+      <div className="h-px bg-gray-700 my-1" />
       <button
         className="w-full text-left px-4 py-2 hover:bg-gray-700 transition-colors"
         onClick={handleClose}

@@ -6,14 +6,16 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
 import { useTabStore } from './store/tabStore';
+import { useSettingsStore } from './store/settingsStore';
 import { v4 as uuidv4 } from 'uuid';
 
 function App() {
   const [isMaximized, setIsMaximized] = useState(false);
   const addTab = useTabStore((state) => state.addTab);
-  const activeTabTitle = useTabStore((state) => 
+  const activeTabTitle = useTabStore((state) =>
     state.tabs.find((t) => t.id === state.activeTabId)?.title
   );
+  const settings = useSettingsStore((state) => state.settings);
   const initialized = useRef(false);
   useGlobalShortcuts();
 
@@ -62,14 +64,14 @@ function App() {
         const sessionId = await invoke<string>('create_pty_session', {
           shell: shell || null,
           args: shellArgs || null,
-          cwd: null,
+          cwd: settings.defaultCwd || null,
           cols: 80,
           rows: 24,
         });
 
         addTab({
           id: uuidv4(),
-          title: shell || 'Terminal',
+          title: shell || 'Local',
           sessionId,
           type: 'local',
         });

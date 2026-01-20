@@ -46,4 +46,8 @@ impl PtySession {
         let _ = self.pty.child.kill();
         Ok(())
     }
+
+    pub fn get_child_pid(&self) -> u32 {
+        self.pty.child.id()
+    }
 }

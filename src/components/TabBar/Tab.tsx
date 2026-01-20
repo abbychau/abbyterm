@@ -38,7 +38,7 @@ export function Tab({ id, title, isActive, sessionId }: TabProps) {
     <>
       <div
         className={`
-          h-9 px-3 flex items-center gap-2 cursor-pointer border-r border-gray-800 min-w-[120px] max-w-[200px] select-none
+          h-9 px-3 flex items-center gap-2 cursor-pointer border-r border-gray-800 min-w-[120px] max-w-[300px] select-none
           ${
             isActive
               ? 'bg-gray-800 text-gray-100'
@@ -47,6 +47,7 @@ export function Tab({ id, title, isActive, sessionId }: TabProps) {
         `}
         onClick={() => setActiveTab(id)}
         onContextMenu={handleContextMenu}
+        title={title}
       >
         <span className="text-sm truncate flex-1">{title}</span>
         <button
