@@ -230,6 +230,47 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     className="w-full"
                   />
                 </div>
+
+                <div className="pt-2 border-t border-gray-700/60" />
+
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-200">Toolbar Buttons</h3>
+                    <p className="text-xs text-gray-400 mt-1">Show or hide quick-connect buttons in the title bar.</p>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Show Docker</label>
+                    <button
+                      onClick={() => updateSettings({ showDockerButton: !settings.showDockerButton })}
+                      className={`relative w-12 h-6 transition-colors ${
+                        settings.showDockerButton ? 'bg-blue-500' : 'bg-gray-600'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-5 h-5 bg-white transition-transform ${
+                          settings.showDockerButton ? 'translate-x-6' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Show Kubectl</label>
+                    <button
+                      onClick={() => updateSettings({ showKubectlButton: !settings.showKubectlButton })}
+                      className={`relative w-12 h-6 transition-colors ${
+                        settings.showKubectlButton ? 'bg-blue-500' : 'bg-gray-600'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-5 h-5 bg-white transition-transform ${
+                          settings.showKubectlButton ? 'translate-x-6' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 

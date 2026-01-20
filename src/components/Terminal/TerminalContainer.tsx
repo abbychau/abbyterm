@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Terminal } from './Terminal';
 import { useTabStore } from '@/store/tabStore';
 import { getCurrentWindow } from '@tauri-apps/api/window';

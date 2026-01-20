@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { WindowControls } from './WindowControls';
 import { MenuButton } from './MenuButton';
 import { NewTabButton } from './NewTabButton';
@@ -7,9 +7,11 @@ import { K8sButton } from './K8sButton';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 import { useTabStore } from '@/store/tabStore';
+import { useSettingsStore } from '@/store/settingsStore';
 
 export function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false);
+  const settings = useSettingsStore((state) => state.settings);
   const activeTabTitle = useTabStore((state) => 
     state.tabs.find((t) => t.id === state.activeTabId)?.title
   );
@@ -65,8 +67,8 @@ export function TitleBar() {
       {/* Right section - Buttons (not draggable) */}
       <div className="flex items-center gap-1">
         <NewTabButton />
-        <DockerButton />
-        <K8sButton />
+        {settings.showDockerButton && <DockerButton />}
+        {settings.showKubectlButton && <K8sButton />}
         <MenuButton />
       </div>
       <div className="w-px h-4 bg-gray-700 mx-1" />

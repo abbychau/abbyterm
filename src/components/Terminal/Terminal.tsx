@@ -194,7 +194,7 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
 
     // Add addons
     const fitAddon = new FitAddon();
-    const webLinksAddon = new WebLinksAddon((event: MouseEvent, uri: string) => {
+    const webLinksAddon = new WebLinksAddon((_event: MouseEvent, uri: string) => {
       // Open URL in default browser using Tauri shell API
       open(uri).catch((err) => {
         console.error('Failed to open URL:', uri, err);

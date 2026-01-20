@@ -62,6 +62,8 @@ pub fn run() {
             // Container commands
             get_docker_containers,
             get_kubernetes_pods,
+            check_kubectl_available,
+            check_docker_available,
             // CLI args
             get_initial_args,
         ])

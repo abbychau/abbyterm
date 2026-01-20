@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { TitleBar } from './components/TitleBar/TitleBar';
 import { TabBar } from './components/TabBar/TabBar';
 import { TerminalContainer } from './components/Terminal/TerminalContainer';
@@ -10,7 +10,6 @@ import { useSettingsStore } from './store/settingsStore';
 import { v4 as uuidv4 } from 'uuid';
 
 function App() {
-  const [isMaximized, setIsMaximized] = useState(false);
   const addTab = useTabStore((state) => state.addTab);
   const activeTabTitle = useTabStore((state) =>
     state.tabs.find((t) => t.id === state.activeTabId)?.title
@@ -43,6 +42,30 @@ function App() {
       initialized.current = true;
 
       try {
+        // Auto-hide Kubectl button if kubectl isn't runnable.
+        // (Do not gate this behind the button being shown; we want the first-run experience to be correct.)
+        try {
+          const kubectlOk = await invoke<boolean>('check_kubectl_available');
+          const current = useSettingsStore.getState().settings;
+          if (!kubectlOk && current.showKubectlButton) {
+            useSettingsStore.getState().updateSettings({ showKubectlButton: false });
+          }
+        } catch (e) {
+          // If the check itself fails, keep current setting unchanged.
+          console.warn('Failed to check kubectl availability:', e);
+        }
+
+        // Auto-hide Docker button if docker isn't runnable.
+        try {
+          const dockerOk = await invoke<boolean>('check_docker_available');
+          const current = useSettingsStore.getState().settings;
+          if (!dockerOk && current.showDockerButton) {
+            useSettingsStore.getState().updateSettings({ showDockerButton: false });
+          }
+        } catch (e) {
+          console.warn('Failed to check docker availability:', e);
+        }
+
         const args = await invoke<string[] | null>('get_initial_args');
         
         let shell: string | undefined;
@@ -82,21 +105,7 @@ function App() {
 
     init();
 
-    const checkMaximized = async () => {
-      const maximized = await invoke<boolean>('is_maximized');
-      setIsMaximized(maximized);
-    };
-
-    checkMaximized();
-
-    const appWindow = getCurrentWindow();
-    const unlisten = appWindow.onResized(() => {
-      checkMaximized();
-    });
-
-    return () => {
-      unlisten.then((fn) => fn());
-    };
+    return;
   }, []);
 
   return (

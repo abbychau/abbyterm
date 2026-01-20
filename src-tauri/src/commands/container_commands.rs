@@ -52,6 +52,43 @@ fn find_command(cmd: &str) -> String {
 }
 
 #[tauri::command]
+pub async fn check_kubectl_available() -> bool {
+    let kubectl_cmd = find_command("kubectl");
+    let output = timeout(
+        Duration::from_secs(3),
+        tokio::process::Command::new(&kubectl_cmd)
+            .arg("version")
+            .arg("--client")
+            .output(),
+    )
+    .await;
+
+    match output {
+        Ok(Ok(out)) => out.status.success(),
+        _ => false,
+    }
+}
+
+#[tauri::command]
+pub async fn check_docker_available() -> bool {
+    let docker_cmd = find_command("docker");
+    let output = timeout(
+        Duration::from_secs(3),
+        tokio::process::Command::new(&docker_cmd)
+            .arg("ps")
+            .arg("--format")
+            .arg("{{.ID}}")
+            .output(),
+    )
+    .await;
+
+    match output {
+        Ok(Ok(out)) => out.status.success(),
+        _ => false,
+    }
+}
+
+#[tauri::command]
 pub async fn get_docker_containers() -> Result<Vec<DockerContainer>, String> {
     let docker_cmd = find_command("docker");
 

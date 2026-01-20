@@ -33,6 +33,8 @@ export interface Settings {
   shell: string;
   defaultCwd: string;
   useWebGL: boolean;
+  showDockerButton: boolean;
+  showKubectlButton: boolean;
   shortcuts: Shortcuts;
 }
 

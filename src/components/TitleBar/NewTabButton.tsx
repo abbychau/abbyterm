@@ -18,7 +18,7 @@ export function NewTabButton() {
   const { addTab } = useTabStore();
   const settings = useSettingsStore((state) => state.settings);
   const [sshHosts, setSshHosts] = useState<SshHost[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const [, setIsOpen] = useState(false);
 
   useEffect(() => {
     loadSshHosts();
@@ -66,7 +66,7 @@ export function NewTabButton() {
       // Build SSH command
       const hostname = host.hostname || host.name;
       const port = host.port || 22;
-      const user = host.user || process.env.USER || '';
+      const user = host.user || '';
 
       let sshCommand = `ssh ${user ? `${user}@` : ''}${hostname}`;
       if (port !== 22) {

@@ -113,7 +113,7 @@ export function K8sButton() {
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
-          <Cloud size={16} className="text-blue-400" />
+          <Cloud size={16} className="text-gray-300" />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>

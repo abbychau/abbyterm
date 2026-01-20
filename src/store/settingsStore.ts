@@ -26,6 +26,8 @@ const defaultSettings: Settings = {
   shell: '/bin/bash',
   defaultCwd: '~',
   useWebGL: false,
+  showDockerButton: true,
+  showKubectlButton: true,
   shortcuts: defaultShortcuts,
 };
 

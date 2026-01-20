@@ -119,7 +119,7 @@ export function DockerButton() {
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
-          <Container size={16} className="text-cyan-400" />
+          <Container size={16} className="text-gray-300" />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
