@@ -18,6 +18,8 @@ export const defaultShortcuts: Shortcuts = {
 
 const defaultSettings: Settings = {
   theme: defaultThemes['Dark+'],
+  appTheme: defaultThemes['Dark+'],
+  syncAppThemeWithTerminal: true,
   fontSize: 14,
   fontFamily: 'JetBrains Mono, Fira Code, Menlo, Monaco, "Courier New", monospace',
   cursorStyle: 'block',
@@ -47,6 +49,11 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           settings: { ...state.settings, theme },
         })),
+
+      setAppTheme: (appTheme: Theme) =>
+        set((state) => ({
+          settings: { ...state.settings, appTheme },
+        })),
     }),
     {
       name: 'abbyterm-settings',
@@ -56,6 +63,12 @@ export const useSettingsStore = create<SettingsStore>()(
         const mergedSettings = {
           ...defaultSettings,
           ...(persistedState?.settings || {}),
+          // Ensure appTheme exists even for existing users
+          appTheme: persistedState?.settings?.appTheme || defaultSettings.appTheme,
+          syncAppThemeWithTerminal:
+            typeof persistedState?.settings?.syncAppThemeWithTerminal === 'boolean'
+              ? persistedState.settings.syncAppThemeWithTerminal
+              : defaultSettings.syncAppThemeWithTerminal,
           shortcuts: {
             ...defaultSettings.shortcuts,
             ...(persistedState?.settings?.shortcuts || {}),

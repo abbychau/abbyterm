@@ -29,12 +29,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
         <div className="h-screen bg-gray-900 text-white flex items-center justify-center p-8">
           <div className="max-w-2xl">
             <h1 className="text-2xl font-bold mb-4 text-red-400">Something went wrong</h1>
-            <pre className="bg-gray-800 p-4 rounded text-sm overflow-auto">
+            <pre className="bg-gray-800 p-4 text-sm overflow-auto">
               {this.state.error?.toString()}
             </pre>
             <button
               onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors"
             >
               Reload Application
             </button>

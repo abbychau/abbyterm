@@ -122,37 +122,37 @@ export function TabContextMenu({ x, y, tabId, sessionId, onClose }: TabContextMe
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 w-48 bg-gray-800 border border-gray-700 rounded-md shadow-lg py-1 text-sm text-gray-200"
+      className="fixed z-50 w-48 app-surface-2 border app-border shadow-lg py-1 text-sm app-text"
       style={{ top: y, left: x }}
     >
       <button
         className={`w-full text-left px-4 py-2 transition-colors ${
           copyStatus === 'success'
-            ? 'bg-green-700 hover:bg-green-600'
+            ? 'app-bg-success app-hover-success'
             : copyStatus === 'error'
-            ? 'bg-red-700 hover:bg-red-600'
-            : 'hover:bg-gray-700'
+            ? 'app-bg-danger app-hover-danger'
+            : 'app-hover'
         }`}
         onClick={handleCopyWorkingDirectory}
         disabled={copyStatus === 'copying'}
       >
         {getCopyButtonText()}
       </button>
-      <div className="h-px bg-gray-700 my-1" />
+      <div className="h-px my-1 app-border" />
       <button
-        className="w-full text-left px-4 py-2 hover:bg-gray-700 transition-colors"
+        className="w-full text-left px-4 py-2 app-hover transition-colors"
         onClick={handleClose}
       >
         Close
       </button>
       <button
-        className="w-full text-left px-4 py-2 hover:bg-gray-700 transition-colors"
+        className="w-full text-left px-4 py-2 app-hover transition-colors"
         onClick={handleCloseOthers}
       >
         Close Others
       </button>
       <button
-        className="w-full text-left px-4 py-2 hover:bg-gray-700 transition-colors"
+        className="w-full text-left px-4 py-2 app-hover transition-colors"
         onClick={handleCloseToRight}
       >
         Close to the Right

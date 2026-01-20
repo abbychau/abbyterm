@@ -111,13 +111,13 @@ export function DockerButton() {
   const renderContainerItem = (container: DockerContainer) => (
     <DropdownMenu.Item
       key={container.id}
-      className="px-3 py-2 text-sm text-gray-200 rounded hover:bg-gray-700 outline-none cursor-pointer flex items-center gap-2"
+      className="px-3 py-2 text-sm app-text app-hover outline-none cursor-pointer flex items-center gap-2"
       onSelect={() => handleNewDockerTab(container)}
     >
       <Container size={16} />
       <div className="flex flex-col flex-1 min-w-0">
         <span className="truncate">{container.name}</span>
-        <span className="text-xs text-gray-400 truncate">{container.image}</span>
+        <span className="text-xs app-text-muted truncate">{container.image}</span>
       </div>
     </DropdownMenu.Item>
   );
@@ -126,23 +126,23 @@ export function DockerButton() {
     <DropdownMenu.Root modal={false} onOpenChange={setIsOpen}>
       <DropdownMenu.Trigger asChild>
         <button
-          className="px-3 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition-colors"
+          className="px-3 h-8 flex items-center justify-center app-hover transition-colors"
           aria-label="Docker containers"
           type="button"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
-          <Container size={16} className="text-gray-300" />
+          <Container size={16} className="app-text" />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          className="min-w-[280px] bg-gray-800 rounded-md shadow-lg p-1 border border-gray-700 z-50 max-h-[500px] overflow-y-auto"
+          className="min-w-[280px] app-surface-2 shadow-lg p-1 border app-border z-50 max-h-[500px] overflow-y-auto"
           align="start"
           sideOffset={5}
         >
           <div className="px-3 py-2 flex items-center justify-between">
-            <DropdownMenu.Label className="text-xs text-gray-400 font-semibold">
+            <DropdownMenu.Label className="text-xs app-text-muted font-semibold">
               DOCKER CONTAINERS
             </DropdownMenu.Label>
             <button
@@ -150,24 +150,24 @@ export function DockerButton() {
                 e.stopPropagation();
                 loadDockerContainers();
               }}
-              className="p-1 hover:bg-gray-700 rounded transition-colors"
+              className="p-1 app-hover transition-colors"
               disabled={isLoadingDocker}
             >
-              <RefreshCw size={12} className={`text-gray-400 ${isLoadingDocker ? 'animate-spin' : ''}`} />
+              <RefreshCw size={12} className={`app-text-muted ${isLoadingDocker ? 'animate-spin' : ''}`} />
             </button>
           </div>
           {isLoadingDocker && (
-            <div className="px-3 py-2 text-xs text-gray-500 italic">
+            <div className="px-3 py-2 text-xs app-text-muted italic">
               Loading...
             </div>
           )}
           {!isLoadingDocker && dockerError && (
-            <div className="px-3 py-2 text-xs text-red-400">
+            <div className="px-3 py-2 text-xs text-[color:var(--app-danger)]">
               {dockerError}
             </div>
           )}
           {!isLoadingDocker && !dockerError && dockerContainers.length === 0 && (
-            <div className="px-3 py-2 text-xs text-gray-500 italic">
+            <div className="px-3 py-2 text-xs app-text-muted italic">
               No running containers
             </div>
           )}
@@ -176,14 +176,14 @@ export function DockerButton() {
               {/* Render project groups as sub-menus */}
               {Object.entries(groupedContainers.projects).map(([projectName, containers]) => (
                 <DropdownMenu.Sub key={projectName}>
-                  <DropdownMenu.SubTrigger className="px-3 py-2 text-sm text-gray-200 rounded hover:bg-gray-700 outline-none cursor-pointer flex items-center gap-2">
+                  <DropdownMenu.SubTrigger className="px-3 py-2 text-sm app-text app-hover outline-none cursor-pointer flex items-center gap-2">
                     <Container size={16} />
                     <span className="flex-1 truncate">{projectName}</span>
-                    <span className="text-xs text-gray-500">({containers.length})</span>
+                    <span className="text-xs app-text-muted">({containers.length})</span>
                     <ChevronRight size={14} />
                   </DropdownMenu.SubTrigger>
                   <DropdownMenu.Portal>
-                    <DropdownMenu.SubContent className="min-w-[280px] bg-gray-800 rounded-md shadow-lg p-1 border border-gray-700 z-50 max-h-[400px] overflow-y-auto">
+                    <DropdownMenu.SubContent className="min-w-[280px] app-surface-2 rounded-md shadow-lg p-1 border app-border z-50 max-h-[400px] overflow-y-auto">
                       {containers.map((container) => renderContainerItem(container))}
                     </DropdownMenu.SubContent>
                   </DropdownMenu.Portal>

@@ -20,8 +20,18 @@ function App() {
 
   useEffect(() => {
     const updateTitle = async () => {
-      const appWindow = getCurrentWindow();
-      await appWindow.setTitle(activeTabTitle || 'AbbyTerm');
+      const nextTitle = activeTabTitle || 'AbbyTerm';
+
+      // Always keep the web document title in sync (useful for `vite preview`, and harmless in Tauri).
+      document.title = nextTitle;
+
+      // Best-effort: update the actual native window title for taskbar / window manager.
+      try {
+        const appWindow = getCurrentWindow();
+        await appWindow.setTitle(nextTitle);
+      } catch {
+        // Likely running outside Tauri, or missing capability permissions.
+      }
     };
     updateTitle();
   }, [activeTabTitle]);
@@ -35,6 +45,56 @@ function App() {
       document.removeEventListener('contextmenu', handleContextMenu);
     };
   }, []);
+
+  useEffect(() => {
+    const themeToUse = settings.syncAppThemeWithTerminal ? settings.theme : settings.appTheme;
+    const colors = themeToUse?.colors;
+    if (!colors) return;
+
+    const isLightBackground = (hexColor: string) => {
+      const hex = hexColor.trim();
+      const m = hex.match(/^#([0-9a-fA-F]{6})$/);
+      if (!m) return false;
+
+      const n = parseInt(m[1], 16);
+      const r = (n >> 16) & 0xff;
+      const g = (n >> 8) & 0xff;
+      const b = n & 0xff;
+
+      // Relative luminance (sRGB)
+      const srgb = [r, g, b].map((v) => {
+        const c = v / 255;
+        return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      });
+      const lum = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+      return lum > 0.6;
+    };
+
+    const isLight = isLightBackground(colors.background);
+    const pickOnColor = (hexColor: string) => (isLightBackground(hexColor) ? '#000000' : '#ffffff');
+
+    const surface2 = isLight ? (colors.white || colors.brightWhite || colors.background) : colors.black;
+    const border = isLight ? (colors.brightCyan || colors.brightBlue || colors.brightBlack) : colors.brightBlack;
+    const textMuted = isLight ? (colors.brightBlue || colors.brightCyan || colors.white) : colors.brightBlack;
+    const hover = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.08)';
+    const hover2 = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.12)';
+
+    const root = document.documentElement;
+    root.style.setProperty('--app-bg', colors.background);
+    root.style.setProperty('--app-surface', colors.background);
+    root.style.setProperty('--app-surface-2', surface2);
+    root.style.setProperty('--app-border', border);
+    root.style.setProperty('--app-text', colors.foreground);
+    root.style.setProperty('--app-text-muted', textMuted);
+    root.style.setProperty('--app-hover', hover);
+    root.style.setProperty('--app-hover-2', hover2);
+    root.style.setProperty('--app-accent', colors.blue);
+    root.style.setProperty('--app-on-accent', pickOnColor(colors.blue));
+    root.style.setProperty('--app-danger', colors.red);
+    root.style.setProperty('--app-on-danger', pickOnColor(colors.red));
+    root.style.setProperty('--app-success', colors.green);
+    root.style.setProperty('--app-on-success', pickOnColor(colors.green));
+  }, [settings.appTheme, settings.syncAppThemeWithTerminal, settings.theme]);
 
   useEffect(() => {
     const init = async () => {
@@ -113,8 +173,8 @@ function App() {
   }, []);
 
   return (
-    <div className={`h-screen flex items-center justify-center`}>
-      <div className={`h-full w-full bg-gray-900 text-white flex flex-col overflow-hidden`}>
+    <div className="h-screen w-screen flex items-center justify-center">
+      <div className="h-full w-full flex flex-col overflow-hidden app-bg">
         <TitleBar />
         <TabBar />
         <TerminalContainer />

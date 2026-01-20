@@ -23,3 +23,81 @@ body {
   height: 100vh;
   background: transparent;
 }
+
+:root {
+  --app-bg: #111827;
+  --app-surface: #111827;
+  --app-surface-2: #1f2937;
+  --app-border: #374151;
+  --app-text: #e5e7eb;
+  --app-text-muted: #9ca3af;
+  --app-hover: rgba(255, 255, 255, 0.08);
+  --app-hover-2: rgba(255, 255, 255, 0.12);
+  --app-accent: #3b82f6;
+  --app-on-accent: #ffffff;
+  --app-danger: #ef4444;
+  --app-on-danger: #ffffff;
+  --app-success: #22c55e;
+  --app-on-success: #ffffff;
+}
+
+@layer utilities {
+  .app-bg {
+    background-color: var(--app-bg);
+    color: var(--app-text);
+  }
+
+  .app-surface {
+    background-color: var(--app-surface);
+  }
+
+  .app-surface-2 {
+    background-color: var(--app-surface-2);
+  }
+
+  .app-border {
+    border-color: var(--app-border);
+  }
+
+  .app-text {
+    color: var(--app-text);
+  }
+
+  .app-text-muted {
+    color: var(--app-text-muted);
+  }
+
+  .app-hover:hover {
+    background-color: var(--app-hover);
+  }
+
+  .app-hover-2:hover {
+    background-color: var(--app-hover-2);
+  }
+
+  .app-bg-success {
+    background-color: var(--app-success);
+    color: var(--app-on-success);
+  }
+
+  .app-bg-danger {
+    background-color: var(--app-danger);
+    color: var(--app-on-danger);
+  }
+
+  .app-hover-success:hover {
+    background-color: var(--app-success);
+  }
+
+  .app-hover-danger:hover {
+    background-color: var(--app-danger);
+  }
+
+  .app-text-accent {
+    color: var(--app-accent);
+  }
+
+  .app-border-accent {
+    border-color: var(--app-accent);
+  }
+}

@@ -9,7 +9,7 @@ export function TabBar() {
   }
 
   return (
-    <div className="h-9 bg-gray-900 border-b border-gray-800 flex overflow-x-auto scrollbar-thin">
+    <div className="h-9 app-surface border-b app-border flex overflow-x-auto scrollbar-thin">
       {tabs.map((tab) => (
         <Tab
           key={tab.id}

@@ -108,23 +108,23 @@ export function NewTabButton() {
     <DropdownMenu.Root modal={false} onOpenChange={setIsOpen}>
       <DropdownMenu.Trigger asChild>
         <button
-          className="px-3 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition-colors"
+          className="px-3 h-8 flex items-center justify-center app-hover transition-colors"
           aria-label="New connection"
           type="button"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
-          <Plus size={16} className="text-gray-300" />
+          <Plus size={16} className="app-text" />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          className="min-w-[280px] bg-gray-800 rounded-md shadow-lg p-1 border border-gray-700 z-50 max-h-[500px] overflow-y-auto"
+          className="min-w-[280px] app-surface-2 rounded-md shadow-lg p-1 border app-border z-50 max-h-[500px] overflow-y-auto"
           align="start"
           sideOffset={5}
         >
           <DropdownMenu.Item
-            className="px-3 py-2 text-sm text-gray-200 rounded hover:bg-gray-700 outline-none cursor-pointer flex items-center gap-2"
+            className="px-3 py-2 text-sm app-text app-hover outline-none cursor-pointer flex items-center gap-2"
             onSelect={handleNewLocalTab}
           >
             <MonitorDot size={16} />
@@ -133,21 +133,21 @@ export function NewTabButton() {
 
           {sshHosts.length > 0 && (
             <>
-              <DropdownMenu.Separator className="h-px bg-gray-700 my-1" />
-              <DropdownMenu.Label className="px-3 py-2 text-xs text-gray-400 font-semibold">
+              <DropdownMenu.Separator className="h-px my-1 bg-[color:var(--app-border)]" />
+              <DropdownMenu.Label className="px-3 py-2 text-xs app-text-muted font-semibold">
                 SSH CONNECTIONS
               </DropdownMenu.Label>
               {sshHosts.map((host) => (
                 <DropdownMenu.Item
                   key={host.name}
-                  className="px-3 py-2 text-sm text-gray-200 rounded hover:bg-gray-700 outline-none cursor-pointer flex items-center gap-2"
+                  className="px-3 py-2 text-sm app-text app-hover outline-none cursor-pointer flex items-center gap-2"
                   onSelect={() => handleNewSshTab(host)}
                 >
                   <ServerIcon size={16} />
                   <div className="flex flex-col">
                     <span>{host.name}</span>
                     {host.hostname && host.hostname !== host.name && (
-                      <span className="text-xs text-gray-400">{host.hostname}</span>
+                      <span className="text-xs app-text-muted">{host.hostname}</span>
                     )}
                   </div>
                 </DropdownMenu.Item>

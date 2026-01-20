@@ -25,6 +25,8 @@ export interface Theme {
 
 export interface Settings {
   theme: Theme;
+  appTheme: Theme;
+  syncAppThemeWithTerminal: boolean;
   fontSize: number;
   fontFamily: string;
   cursorStyle: 'block' | 'underline' | 'bar';
@@ -58,6 +60,7 @@ export interface SettingsStore {
   settings: Settings;
   updateSettings: (updates: Partial<Settings>) => void;
   setTheme: (theme: Theme) => void;
+  setAppTheme: (theme: Theme) => void;
 }
 
 export const defaultThemes: Record<string, Theme> = {

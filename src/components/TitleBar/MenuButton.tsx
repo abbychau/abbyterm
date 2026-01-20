@@ -13,24 +13,24 @@ export function MenuButton() {
       <DropdownMenu.Root modal={false}>
         <DropdownMenu.Trigger asChild>
           <button
-            className="px-3 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition-colors"
+            className="px-3 h-8 flex items-center justify-center app-hover  transition-colors"
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            <Menu size={16} className="text-gray-300" />
+            <Menu size={16} className="app-text" />
           </button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
-          <DropdownMenu.Content className="min-w-[180px] bg-gray-800 rounded-md shadow-lg p-1 border border-gray-700 z-50">
+          <DropdownMenu.Content className="min-w-[180px] app-surface-2 shadow-lg p-1 border app-border z-50">
             <DropdownMenu.Item
-              className="px-3 py-2 text-sm text-gray-200 rounded hover:bg-gray-700 outline-none cursor-pointer"
+              className="px-3 py-2 text-sm app-text  app-hover outline-none cursor-pointer"
               onSelect={() => setSettingsOpen(true)}
             >
               Settings
             </DropdownMenu.Item>
-            <DropdownMenu.Separator className="h-px bg-gray-700 my-1" />
+            <DropdownMenu.Separator className="h-px my-1 bg-[color:var(--app-border)]" />
             <DropdownMenu.Item
-              className="px-3 py-2 text-sm text-gray-200 rounded hover:bg-gray-700 outline-none cursor-pointer"
+              className="px-3 py-2 text-sm app-text  app-hover outline-none cursor-pointer"
               onSelect={() => setAboutOpen(true)}
             >
               About

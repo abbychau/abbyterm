@@ -207,12 +207,52 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
     term.loadAddon(searchAddon);
     searchAddonRef.current = searchAddon;
 
+    const shouldUpdateTitle = (currentTitle: string | undefined, nextTitle: string) => {
+      if (!nextTitle) return false;
+      if (!currentTitle) return true;
+      if (currentTitle === nextTitle) return false;
+
+      const currentIsAbsPath = currentTitle.startsWith('/');
+      const nextIsAbsPath = nextTitle.startsWith('/');
+
+      // Avoid flicker: don't replace a known absolute path with a less-specific prompt-ish title.
+      if (currentIsAbsPath && !nextIsAbsPath) return false;
+
+      return true;
+    };
+
+    const extractPathFromPromptishTitle = (rawTitle: string) => {
+      const title = rawTitle.trim();
+
+      // Common title / prompt shapes we see:
+      // - user@host:~/path
+      // - user@host:/abs/path
+      // - user@host ~/path
+      const colon = title.match(/^.+@.+:([~\/].+)$/);
+      if (colon) return colon[1].trim();
+
+      const space = title.match(/^.+@.+\s+([~\/].+)$/);
+      if (space) return space[1].trim();
+
+      return null;
+    };
+
     // Handle title change from OSC sequences (including OSC 7 for directory)
     term.onTitleChange((title) => {
       const tabs = useTabStore.getState().tabs;
       const tab = tabs.find((t) => t.sessionId === sessionId);
       if (tab) {
-        updateTab(tab.id, { title });
+        let nextTitle = title;
+
+        // For local terminals, prefer displaying directory, not the full user@host prompt.
+        if (tab.type === 'local') {
+          const extracted = extractPathFromPromptishTitle(title);
+          if (extracted) nextTitle = extracted;
+        }
+
+        if (shouldUpdateTitle(tab.title, nextTitle)) {
+          updateTab(tab.id, { title: nextTitle });
+        }
       }
     });
 
@@ -259,7 +299,7 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       let newTitle: string | null = null;
 
       // Format 1: user@host:path$ or user@host:path#
-      const format1 = line.match(/^(.+@.+:.+?)([$#%])\s*$/);
+      const format1 = line.match(/^.+@.+:([~\/][\w\-\.\/]*)([$#%])\s*$/);
       if (format1) {
         newTitle = format1[1];
       }
@@ -282,7 +322,7 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
 
       // If we detected a title and it's different from current, update it
       // If tab.type is 'local' and title is still default, use "Local" as fallback
-      if (newTitle && tab.title !== newTitle) {
+      if (newTitle && shouldUpdateTitle(tab.title, newTitle)) {
         updateTab(tab.id, { title: newTitle });
       } else if (!newTitle && tab.type === 'local' && (tab.title === 'Terminal' || tab.title === 'Local')) {
         // Keep "Local" as is, don't change
@@ -624,7 +664,7 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
         {!isInitialized && (
           <div className="absolute inset-0 flex items-center justify-center text-gray-400">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto mb-2"></div>
+              <div className="animate-spin h-8 w-8 border-b-2 border-gray-400 mx-auto mb-2"></div>
               <p>Initializing terminal...</p>
             </div>
           </div>

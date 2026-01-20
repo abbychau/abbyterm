@@ -38,11 +38,11 @@ export function Tab({ id, title, isActive, sessionId }: TabProps) {
     <>
       <div
         className={`
-          h-9 px-3 flex items-center gap-2 cursor-pointer border-r border-gray-800 min-w-[120px] max-w-[300px] select-none
+          h-9 px-3 flex items-center gap-2 cursor-pointer border-r app-border min-w-[120px] max-w-[300px] select-none
           ${
             isActive
-              ? 'bg-gray-800 text-gray-100'
-              : 'bg-gray-900 text-gray-400 hover:bg-gray-850'
+              ? 'app-surface-2 app-text'
+              : 'app-surface app-text-muted app-hover'
           }
         `}
         onClick={() => setActiveTab(id)}
@@ -52,7 +52,7 @@ export function Tab({ id, title, isActive, sessionId }: TabProps) {
         <span className="text-sm truncate flex-1">{title}</span>
         <button
           onClick={handleClose}
-          className="hover:bg-gray-700 rounded p-0.5 transition-colors flex-shrink-0"
+          className="app-hover-2 p-0.5 transition-colors flex-shrink-0"
           aria-label="Close tab"
         >
           <X size={14} />

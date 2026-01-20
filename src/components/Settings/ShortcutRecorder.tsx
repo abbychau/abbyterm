@@ -57,7 +57,7 @@ export function ShortcutRecorder({ value, onChange }: ShortcutRecorderProps) {
     <button
       ref={buttonRef}
       onClick={() => setIsRecording(true)}
-      className={`px-3 py-1.5 rounded border text-sm font-mono min-w-[120px] text-center transition-colors ${
+      className={`px-3 py-1.5 border text-sm font-mono min-w-[120px] text-center transition-colors ${
         isRecording
           ? 'bg-blue-600 border-blue-500 text-white animate-pulse'
           : 'bg-gray-700 border-gray-600 hover:border-gray-500'

@@ -11,7 +11,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
-  const { settings, updateSettings, setTheme } = useSettingsStore();
+  const { settings, updateSettings, setTheme, setAppTheme } = useSettingsStore();
   const [activeTab, setActiveTab] = useState<'appearance' | 'terminal' | 'shortcuts' | 'advanced'>('appearance');
   const [availableShells, setAvailableShells] = useState<string[]>([]);
 
@@ -34,7 +34,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   const renderShortcutRow = (label: string, id: keyof Shortcuts) => (
     <div className="flex items-center justify-between">
-      <span className="text-gray-300">{label}</span>
+      <span className="app-text">{label}</span>
       <div className="flex items-center gap-2">
         <ShortcutRecorder
           value={settings.shortcuts[id]}
@@ -44,7 +44,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           onClick={() => updateShortcut(id, defaultShortcuts[id])}
           className={`p-1.5 transition-colors ${
             settings.shortcuts[id] !== defaultShortcuts[id]
-              ? 'text-gray-400 hover:text-white hover:bg-gray-700 opacity-100'
+              ? 'app-text-muted hover:text-[color:var(--app-text)] app-hover opacity-100'
               : 'text-transparent opacity-0 pointer-events-none'
           }`}
           title="Reset to default"
@@ -59,13 +59,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 shadow-2xl w-[800px] h-[600px] flex flex-col">
+      <div className="app-surface-2 app-text border app-border shadow-2xl w-[800px] h-[600px] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b app-border">
           <h2 className="text-xl font-semibold">Settings</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="app-text-muted hover:text-[color:var(--app-text)] transition-colors"
           >
             ✕
           </button>
@@ -73,7 +73,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
         <div className="flex flex-1 overflow-hidden">
           {/* Tab Bar - Sidebar */}
-          <div className="flex flex-col w-48 border-r border-gray-700 bg-gray-800/50">
+          <div className="flex flex-col w-48 border-r app-border app-surface">
             {[
               { id: 'appearance', label: 'Appearance' },
               { id: 'terminal', label: 'Terminal' },
@@ -85,9 +85,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`px-4 py-3 text-left font-medium transition-colors ${
                   activeTab === tab.id
-                    ? 'bg-gray-700 text-white border-l-2 border-blue-400'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                    ? 'app-surface-2 app-text border-l-2'
+                    : 'app-text-muted hover:text-[color:var(--app-text)] app-hover'
                 }`}
+                style={activeTab === tab.id ? { borderLeftColor: 'var(--app-accent)' } : undefined}
               >
                 {tab.label}
               </button>
@@ -99,7 +100,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             {activeTab === 'appearance' && (
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Theme</label>
+                  <label className="block text-sm font-medium mb-2">Terminal Theme</label>
                   <div className="grid grid-cols-3 gap-3">
                     {Object.entries(defaultThemes).map(([name, theme]) => (
                       <button
@@ -107,8 +108,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         onClick={() => setTheme(theme)}
                         className={`p-4 border-2 transition-all ${
                           settings.theme.name === name
-                            ? 'border-blue-500 bg-blue-500 bg-opacity-10'
-                            : 'border-gray-700 hover:border-gray-600'
+                            ? 'border-[color:var(--app-accent)] bg-[color:var(--app-hover-2)]'
+                            : 'app-border hover:border-[color:var(--app-text-muted)]'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -140,6 +141,73 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   </div>
                 </div>
 
+                <div className="pt-2 border-t app-border opacity-60" />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-sm font-medium">Application Theme</label>
+                      <p className="text-xs app-text-muted mt-1">Theme for title bar, tabs, menus, and dialogs.</p>
+                    </div>
+                    <button
+                      onClick={() => updateSettings({ syncAppThemeWithTerminal: !settings.syncAppThemeWithTerminal })}
+                      className={`relative w-12 h-6 transition-colors ${
+                        settings.syncAppThemeWithTerminal
+                          ? 'bg-[color:var(--app-accent)]'
+                          : 'bg-[color:var(--app-border)]'
+                      }`}
+                      title="Sync app theme with terminal theme"
+                    >
+                      <div
+                        className={`absolute top-0.5 w-5 h-5 bg-[color:var(--app-surface)] shadow-sm transition-transform ${
+                          settings.syncAppThemeWithTerminal ? 'translate-x-6' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {!settings.syncAppThemeWithTerminal && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Choose App Theme</label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {Object.entries(defaultThemes).map(([name, theme]) => (
+                          <button
+                            key={name}
+                            onClick={() => setAppTheme(theme)}
+                            className={`p-4 border-2 transition-all ${
+                              settings.appTheme.name === name
+                                ? 'border-[color:var(--app-accent)] bg-[color:var(--app-hover-2)]'
+                                : 'app-border hover:border-[color:var(--app-text-muted)]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="w-12 h-12 grid grid-cols-4 grid-rows-2 gap-0.5 p-1"
+                                style={{ backgroundColor: theme.colors.background }}
+                              >
+                                {[
+                                  theme.colors.red,
+                                  theme.colors.green,
+                                  theme.colors.yellow,
+                                  theme.colors.blue,
+                                  theme.colors.magenta,
+                                  theme.colors.cyan,
+                                  theme.colors.white,
+                                  theme.colors.brightBlack,
+                                ].map((color, i) => (
+                                  <div key={i} style={{ backgroundColor: color }} />
+                                ))}
+                              </div>
+                              <span className="font-medium">{name}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs app-text-muted mt-2">Turn sync on to automatically match the terminal theme.</p>
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     Font Size: {settings.fontSize}px
@@ -160,7 +228,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     type="text"
                     value={settings.fontFamily}
                     onChange={(e) => updateSettings({ fontFamily: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 app-surface border app-border focus:border-[color:var(--app-accent)] focus:outline-none"
                   />
                 </div>
               </div>
@@ -175,11 +243,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       <label key={style} className="flex items-center gap-2 cursor-pointer group">
                         <div className={`w-4 h-4 border flex items-center justify-center transition-colors ${
                           settings.cursorStyle === style 
-                            ? 'border-blue-500' 
-                            : 'border-gray-500 group-hover:border-gray-400'
+                            ? 'border-[color:var(--app-accent)]'
+                            : 'app-border group-hover:border-[color:var(--app-text-muted)]'
                         }`}>
                           {settings.cursorStyle === style && (
-                            <div className="w-2 h-2 bg-blue-500" />
+                            <div className="w-2 h-2 bg-[color:var(--app-accent)]" />
                           )}
                         </div>
                         <input
@@ -192,7 +260,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           }
                           className="hidden"
                         />
-                        <span className="capitalize text-gray-300 group-hover:text-white transition-colors">
+                        <span className="capitalize app-text-muted group-hover:text-[color:var(--app-text)] transition-colors">
                           {style}
                         </span>
                       </label>
@@ -205,11 +273,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   <button
                     onClick={() => updateSettings({ cursorBlink: !settings.cursorBlink })}
                     className={`relative w-12 h-6 transition-colors ${
-                      settings.cursorBlink ? 'bg-blue-500' : 'bg-gray-600'
+                      settings.cursorBlink ? 'bg-[color:var(--app-accent)]' : 'bg-[color:var(--app-border)]'
                     }`}
                   >
                     <div
-                      className={`absolute top-0.5 w-5 h-5 bg-white transition-transform ${
+                      className={`absolute top-0.5 w-5 h-5 bg-[color:var(--app-surface)] shadow-sm transition-transform ${
                         settings.cursorBlink ? 'translate-x-6' : 'translate-x-0.5'
                       }`}
                     />
@@ -231,12 +299,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   />
                 </div>
 
-                <div className="pt-2 border-t border-gray-700/60" />
+                <div className="pt-2 border-t app-border opacity-60" />
 
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-200">Toolbar Buttons</h3>
-                    <p className="text-xs text-gray-400 mt-1">Show or hide quick-connect buttons in the title bar.</p>
+                    <h3 className="text-sm font-medium app-text">Toolbar Buttons</h3>
+                    <p className="text-xs app-text-muted mt-1">Show or hide quick-connect buttons in the title bar.</p>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -244,11 +312,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     <button
                       onClick={() => updateSettings({ showDockerButton: !settings.showDockerButton })}
                       className={`relative w-12 h-6 transition-colors ${
-                        settings.showDockerButton ? 'bg-blue-500' : 'bg-gray-600'
+                        settings.showDockerButton ? 'bg-[color:var(--app-accent)]' : 'bg-[color:var(--app-border)]'
                       }`}
                     >
                       <div
-                        className={`absolute top-0.5 w-5 h-5 bg-white transition-transform ${
+                        className={`absolute top-0.5 w-5 h-5 bg-[color:var(--app-surface)] shadow-sm transition-transform ${
                           settings.showDockerButton ? 'translate-x-6' : 'translate-x-0.5'
                         }`}
                       />
@@ -260,11 +328,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     <button
                       onClick={() => updateSettings({ showKubectlButton: !settings.showKubectlButton })}
                       className={`relative w-12 h-6 transition-colors ${
-                        settings.showKubectlButton ? 'bg-blue-500' : 'bg-gray-600'
+                        settings.showKubectlButton ? 'bg-[color:var(--app-accent)]' : 'bg-[color:var(--app-border)]'
                       }`}
                     >
                       <div
-                        className={`absolute top-0.5 w-5 h-5 bg-white transition-transform ${
+                        className={`absolute top-0.5 w-5 h-5 bg-[color:var(--app-surface)] shadow-sm transition-transform ${
                           settings.showKubectlButton ? 'translate-x-6' : 'translate-x-0.5'
                         }`}
                       />
@@ -277,7 +345,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             {activeTab === 'shortcuts' && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                  <h3 className="col-span-2 text-lg font-medium mb-2 text-blue-400">Terminal</h3>
+                  <h3 className="col-span-2 text-lg font-medium mb-2 text-[color:var(--app-accent)]">Terminal</h3>
                   
                   {renderShortcutRow('Copy', 'copy')}
                   {renderShortcutRow('Paste', 'paste')}
@@ -285,7 +353,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   {renderShortcutRow('Zoom Out', 'zoomOut')}
                   {renderShortcutRow('Reset Zoom', 'zoomReset')}
 
-                  <h3 className="col-span-2 text-lg font-medium mb-2 mt-4 text-blue-400">Window & Tabs</h3>
+                  <h3 className="col-span-2 text-lg font-medium mb-2 mt-4 text-[color:var(--app-accent)]">Window & Tabs</h3>
 
                   {renderShortcutRow('Toggle Fullscreen', 'toggleFullscreen')}
                   {renderShortcutRow('New Tab', 'newTab')}
@@ -306,7 +374,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       list="shell-options"
                       value={settings.shell}
                       onChange={(e) => updateSettings({ shell: e.target.value })}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 app-surface border app-border focus:border-[color:var(--app-accent)] focus:outline-none"
                       placeholder="/bin/bash"
                     />
                     <datalist id="shell-options">
@@ -315,7 +383,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       ))}
                     </datalist>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs app-text-muted mt-1">
                     Select from list or type custom path. Leave empty to use system default.
                   </p>
                 </div>
@@ -326,15 +394,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     type="text"
                     value={settings.defaultCwd}
                     onChange={(e) => updateSettings({ defaultCwd: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 app-surface border app-border focus:border-[color:var(--app-accent)] focus:outline-none"
                     placeholder="~"
                   />
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs app-text-muted mt-1">
                     Starting directory for new shell sessions. Use ~ for home directory.
                   </p>
                 </div>
 
-                <div className="pt-2 border-t border-gray-700/60" />
+                <div className="pt-2 border-t app-border opacity-60" />
 
                 <div>
                   <label className="block text-sm font-medium mb-2">Docker Executable Path (Optional)</label>
@@ -342,10 +410,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     type="text"
                     value={settings.dockerExecutablePath}
                     onChange={(e) => updateSettings({ dockerExecutablePath: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 app-surface border app-border focus:border-[color:var(--app-accent)] focus:outline-none"
                     placeholder="/usr/bin/docker"
                   />
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs app-text-muted mt-1">
                     Leave empty to use PATH. Useful when Docker isn't on PATH.
                   </p>
                 </div>
@@ -356,10 +424,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     type="text"
                     value={settings.kubectlExecutablePath}
                     onChange={(e) => updateSettings({ kubectlExecutablePath: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 app-surface border app-border focus:border-[color:var(--app-accent)] focus:outline-none"
                     placeholder="/usr/local/bin/kubectl"
                   />
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs app-text-muted mt-1">
                     Leave empty to use PATH. Useful when kubectl isn't on PATH.
                   </p>
                 </div>
@@ -374,11 +442,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   <button
                     onClick={() => updateSettings({ useWebGL: !settings.useWebGL })}
                     className={`w-12 h-6 transition-colors relative ${
-                      settings.useWebGL ? 'bg-blue-600' : 'bg-gray-600'
+                      settings.useWebGL ? 'bg-[color:var(--app-accent)]' : 'bg-[color:var(--app-border)]'
                     }`}
                   >
                     <div
-                      className={`absolute top-1 left-1 w-4 h-4 bg-white transition-transform ${
+                      className={`absolute top-1 left-1 w-4 h-4 bg-[color:var(--app-surface)] shadow-sm transition-transform ${
                         settings.useWebGL ? 'translate-x-6' : 'translate-x-0'
                       }`}
                     />
@@ -390,10 +458,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 p-4 border-t border-gray-700">
+        <div className="flex justify-end gap-2 p-4 border-t app-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-[color:var(--app-accent)] text-[color:var(--app-on-accent)] hover:opacity-90 transition-colors"
           >
             Done
           </button>

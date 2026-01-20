@@ -46,7 +46,7 @@ export function TitleBar() {
   };
 
   return (
-    <div className={`h-10 bg-gray-900 border-b border-gray-800 flex items-center justify-between select-none ${isMaximized ? '' : 'rounded-t-lg'}`}>
+    <div className={`h-10 app-surface border-b app-border flex items-center justify-between select-none `}>
       {/* Left section - Title */}
       <div 
         data-tauri-drag-region 
@@ -54,7 +54,7 @@ export function TitleBar() {
         onDoubleClick={handleDoubleClick}
       >
         <img src="/hamham.png" alt="Icon" className="w-8 h-8 pointer-events-none m-1" />
-        <span className="text-sm font-semibold text-gray-200 -ml-2 pointer-events-none">{activeTabTitle || 'AbbyTerm'}</span>
+        <span className="text-sm font-semibold app-text -ml-2 pointer-events-none">{activeTabTitle || 'AbbyTerm'}</span>
       </div>
 
       {/* Middle spacer - DRAGGABLE with JS handler */}
@@ -71,7 +71,7 @@ export function TitleBar() {
         {settings.showKubectlButton && <K8sButton />}
         <MenuButton />
       </div>
-      <div className="w-px h-4 bg-gray-700 mx-1" />
+      <div className="w-px h-4 mx-1 app-border" />
       <WindowControls />
     </div>
   );

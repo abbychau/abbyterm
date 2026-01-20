@@ -104,13 +104,13 @@ export function K8sButton() {
   const renderPodItem = (pod: KubernetesPod) => (
     <DropdownMenu.Item
       key={`${pod.namespace}-${pod.name}`}
-      className="px-3 py-2 text-sm text-gray-200 rounded hover:bg-gray-700 outline-none cursor-pointer flex items-center gap-2"
+      className="px-3 py-2 text-sm app-text  app-hover outline-none cursor-pointer flex items-center gap-2"
       onSelect={() => handleNewKubernetesTab(pod)}
     >
       <ServerIcon size={16} />
       <div className="flex flex-col flex-1 min-w-0">
         <span className="truncate">{pod.name}</span>
-        <span className="text-xs text-gray-400 truncate">{pod.ready} • {pod.status}</span>
+        <span className="text-xs app-text-muted truncate">{pod.ready} • {pod.status}</span>
       </div>
     </DropdownMenu.Item>
   );
@@ -119,23 +119,23 @@ export function K8sButton() {
     <DropdownMenu.Root modal={false} onOpenChange={setIsOpen}>
       <DropdownMenu.Trigger asChild>
         <button
-          className="px-3 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition-colors"
+          className="px-3 h-8 flex items-center justify-center app-hover  transition-colors"
           aria-label="Kubernetes pods"
           type="button"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
-          <Cloud size={16} className="text-gray-300" />
+          <Cloud size={16} className="app-text" />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          className="min-w-[280px] bg-gray-800 rounded-md shadow-lg p-1 border border-gray-700 z-50 max-h-[500px] overflow-y-auto"
+          className="min-w-[280px] app-surface-2 shadow-lg p-1 border app-border z-50 max-h-[500px] overflow-y-auto"
           align="start"
           sideOffset={5}
         >
           <div className="px-3 py-2 flex items-center justify-between">
-            <DropdownMenu.Label className="text-xs text-gray-400 font-semibold">
+            <DropdownMenu.Label className="text-xs app-text-muted font-semibold">
               KUBERNETES PODS
             </DropdownMenu.Label>
             <button
@@ -143,24 +143,24 @@ export function K8sButton() {
                 e.stopPropagation();
                 loadKubernetesPods();
               }}
-              className="p-1 hover:bg-gray-700 rounded transition-colors"
+              className="p-1 app-hover  transition-colors"
               disabled={isLoadingK8s}
             >
-              <RefreshCw size={12} className={`text-gray-400 ${isLoadingK8s ? 'animate-spin' : ''}`} />
+              <RefreshCw size={12} className={`app-text-muted ${isLoadingK8s ? 'animate-spin' : ''}`} />
             </button>
           </div>
           {isLoadingK8s && (
-            <div className="px-3 py-2 text-xs text-gray-500 italic">
+            <div className="px-3 py-2 text-xs app-text-muted italic">
               Loading...
             </div>
           )}
           {!isLoadingK8s && k8sError && (
-            <div className="px-3 py-2 text-xs text-red-400">
+            <div className="px-3 py-2 text-xs text-[color:var(--app-danger)]">
               {k8sError}
             </div>
           )}
           {!isLoadingK8s && !k8sError && kubernetesPods.length === 0 && (
-            <div className="px-3 py-2 text-xs text-gray-500 italic">
+            <div className="px-3 py-2 text-xs app-text-muted italic">
               No pods found
             </div>
           )}
@@ -169,14 +169,14 @@ export function K8sButton() {
               {/* Render namespace groups as sub-menus */}
               {Object.entries(groupedPods).map(([namespace, pods]) => (
                 <DropdownMenu.Sub key={namespace}>
-                  <DropdownMenu.SubTrigger className="px-3 py-2 text-sm text-gray-200 rounded hover:bg-gray-700 outline-none cursor-pointer flex items-center gap-2">
+                  <DropdownMenu.SubTrigger className="px-3 py-2 text-sm app-text  app-hover outline-none cursor-pointer flex items-center gap-2">
                     <Cloud size={16} />
                     <span className="flex-1 truncate">{namespace}</span>
-                    <span className="text-xs text-gray-500">({pods.length})</span>
+                    <span className="text-xs app-text-muted">({pods.length})</span>
                     <ChevronRight size={14} />
                   </DropdownMenu.SubTrigger>
                   <DropdownMenu.Portal>
-                    <DropdownMenu.SubContent className="min-w-[280px] bg-gray-800 rounded-md shadow-lg p-1 border border-gray-700 z-50 max-h-[400px] overflow-y-auto">
+                    <DropdownMenu.SubContent className="min-w-[280px] app-surface-2 shadow-lg p-1 border app-border z-50 max-h-[400px] overflow-y-auto">
                       {pods.map((pod) => renderPodItem(pod))}
                     </DropdownMenu.SubContent>
                   </DropdownMenu.Portal>
