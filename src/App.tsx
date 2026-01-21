@@ -19,6 +19,20 @@ function App() {
   useGlobalShortcuts();
 
   useEffect(() => {
+    // With `decorations: false`, many Linux compositors don't draw a shadow by default.
+    // Ask the runtime to enable the native shadow where supported.
+    const applyShadow = async () => {
+      try {
+        const appWindow = getCurrentWindow();
+        await (appWindow as any).setShadow?.(true);
+      } catch {
+        // Not supported on this platform/window manager, or missing permission.
+      }
+    };
+    applyShadow();
+  }, []);
+
+  useEffect(() => {
     const updateTitle = async () => {
       const nextTitle = activeTabTitle || 'AbbyTerm';
 
@@ -174,7 +188,7 @@ function App() {
 
   return (
     <div className="h-screen w-screen flex items-center justify-center">
-      <div className="h-full w-full flex flex-col overflow-hidden app-bg">
+      <div className="h-full w-full flex flex-col overflow-hidden app-bg border border-solid app-border">
         <TitleBar />
         <TabBar />
         <TerminalContainer />

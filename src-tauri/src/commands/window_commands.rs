@@ -1,4 +1,4 @@
-use tauri::Window;
+use tauri::{WebviewWindow, Window};
 static IS_MAXIMIZED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[tauri::command]
@@ -32,4 +32,12 @@ pub async fn is_maximized(window: Window) -> Result<bool, String> {
     
     #[cfg(not(target_os = "macos"))]
     window.is_maximized().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn toggle_devtools(window: WebviewWindow) -> Result<(), String> {
+    // Best-effort: devtools might be disabled in release builds.
+    // `open_devtools` is idempotent so this acts as a "show" action.
+    window.open_devtools();
+    Ok(())
 }

@@ -40,30 +40,30 @@ export function WindowControls() {
       <button
         onClick={handleMinimize}
         onMouseDown={(e) => e.stopPropagation()}
-        className="w-12 h-10 flex items-center justify-center hover:bg-gray-700 transition-colors"
+        className="w-12 h-10 flex items-center justify-center app-hover-2 transition-colors"
         aria-label="Minimize"
       >
-        <Minus size={16} className="text-gray-300" />
+        <Minus size={16} className="app-text" />
       </button>
       <button
         onClick={handleMaximize}
         onMouseDown={(e) => e.stopPropagation()}
-        className="w-12 h-10 flex items-center justify-center hover:bg-gray-700 transition-colors"
+        className="w-12 h-10 flex items-center justify-center app-hover-2 transition-colors"
         aria-label={isMaximized ? 'Restore' : 'Maximize'}
       >
         {isMaximized ? (
-          <Copy size={14} className="text-gray-300" />
+          <Copy size={14} className="app-text" />
         ) : (
-          <Square size={14} className="text-gray-300" />
+          <Square size={14} className="app-text" />
         )}
       </button>
       <button
         onClick={handleClose}
         onMouseDown={(e) => e.stopPropagation()}
-        className="w-12 h-10 flex items-center justify-center hover:bg-red-600 transition-colors"
+        className="group w-12 h-10 flex items-center justify-center app-hover-danger transition-colors"
         aria-label="Close"
       >
-        <X size={16} className="text-gray-300" />
+        <X size={16} className="app-text group-hover:text-[color:var(--app-on-danger)]" />
       </button>
     </div>
   );

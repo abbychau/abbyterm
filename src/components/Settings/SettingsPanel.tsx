@@ -5,7 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { ShortcutRecorder } from './ShortcutRecorder';
 import { RotateCcw } from 'lucide-react';
 import { useTabStore } from '@/store/tabStore';
-import { v4 as uuidv4 } from 'uuid';
+import { PluginsPage } from './PluginsPage';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -17,28 +17,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { addTab } = useTabStore();
   const [activeTab, setActiveTab] = useState<'appearance' | 'terminal' | 'shortcuts' | 'advanced' | 'plugins'>('appearance');
   const [availableShells, setAvailableShells] = useState<string[]>([]);
-
-  const openRatelTab = async () => {
-    const host = '192.252.182.94';
-    const port = 9999;
-
-    const sessionId = await invoke<string>('create_ratel_session', {
-      host,
-      port,
-      cols: 80,
-      rows: 24,
-    });
-
-    addTab({
-      id: uuidv4(),
-      title: `Ratel: ${host}:${port}`,
-      sessionId,
-      // Treat like non-local to avoid CWD polling/title overrides.
-      type: 'ssh',
-    });
-
-    onClose();
-  };
 
   useEffect(() => {
     if (isOpen && activeTab === 'advanced') {
@@ -84,10 +62,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="app-surface-2 app-text border app-border shadow-2xl w-[800px] h-[600px] flex flex-col">
+      <div className="app-surface-2 app-text border app-border shadow-2xl w-[800px] h-[620px] flex flex-col text-sm">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b app-border">
-          <h2 className="text-xl font-semibold">Settings</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b app-border">
+          <h2 className="text-lg font-semibold">Settings</h2>
           <button
             onClick={onClose}
             className="app-text-muted hover:text-[color:var(--app-text)] transition-colors"
@@ -98,7 +76,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
         <div className="flex flex-1 overflow-hidden">
           {/* Tab Bar - Sidebar */}
-          <div className="flex flex-col w-48 border-r app-border app-surface">
+          <div className="flex flex-col w-44 border-r app-border app-surface">
             {[
               { id: 'appearance', label: 'Appearance' },
               { id: 'terminal', label: 'Terminal' },
@@ -122,7 +100,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4">
             {activeTab === 'appearance' && (
               <div className="space-y-6">
                 <div>
@@ -132,7 +110,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       <button
                         key={name}
                         onClick={() => setTheme(theme)}
-                        className={`p-4 border-2 transition-all ${
+                        className={`p-3 border-2 transition-all text-left ${
                           settings.theme.name === name
                             ? 'border-[color:var(--app-accent)] bg-[color:var(--app-hover-2)]'
                             : 'app-border hover:border-[color:var(--app-text-muted)]'
@@ -172,8 +150,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="block text-sm font-medium">Application Theme</label>
-                      <p className="text-xs app-text-muted mt-1">Theme for title bar, tabs, menus, and dialogs.</p>
+                      <label className="block text-sm font-medium">Use same theme as terminal</label>
+                      <p className="text-xs app-text-muted mt-1">When enabled, title bar, tabs, menus, and dialogs follow the terminal theme.</p>
                     </div>
                     <button
                       onClick={() => updateSettings({ syncAppThemeWithTerminal: !settings.syncAppThemeWithTerminal })}
@@ -182,7 +160,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           ? 'bg-[color:var(--app-accent)]'
                           : 'bg-[color:var(--app-border)]'
                       }`}
-                      title="Sync app theme with terminal theme"
+                      title="Use the terminal theme for the app UI"
                     >
                       <div
                         className={`absolute top-0.5 w-5 h-5 bg-[color:var(--app-surface)] shadow-sm transition-transform ${
@@ -194,13 +172,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
                   {!settings.syncAppThemeWithTerminal && (
                     <div>
-                      <label className="block text-sm font-medium mb-2">Choose App Theme</label>
+                      <label className="block text-sm font-medium mb-2">Choose a different app theme</label>
                       <div className="grid grid-cols-3 gap-3">
                         {Object.entries(defaultThemes).map(([name, theme]) => (
                           <button
                             key={name}
                             onClick={() => setAppTheme(theme)}
-                            className={`p-4 border-2 transition-all ${
+                            className={`p-3 border-2 transition-all text-left ${
                               settings.appTheme.name === name
                                 ? 'border-[color:var(--app-accent)] bg-[color:var(--app-hover-2)]'
                                 : 'app-border hover:border-[color:var(--app-text-muted)]'
@@ -229,7 +207,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           </button>
                         ))}
                       </div>
-                      <p className="text-xs app-text-muted mt-2">Turn sync on to automatically match the terminal theme.</p>
+                      <p className="text-xs app-text-muted mt-2">Turn the toggle on to automatically match the terminal theme.</p>
                     </div>
                   )}
                 </div>
@@ -391,32 +369,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             )}
 
             {activeTab === 'plugins' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium">Plugins</h3>
-                  <p className="text-sm app-text-muted mt-1">
-                    Quick-connect tools that open in a new tab.
-                  </p>
-                </div>
-
-                <div className="border app-border app-surface p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="font-medium">Ratel</div>
-                      <div className="text-sm app-text-muted mt-1">
-                        Connects to <span className="font-mono">192.252.182.94:9999</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => void openRatelTab()}
-                      className="px-4 py-2 bg-[color:var(--app-accent)] text-[color:var(--app-on-accent)] hover:opacity-90 transition-colors"
-                    >
-                      Open
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <PluginsPage
+                onOpenTab={(tab) => {
+                  addTab(tab);
+                  onClose();
+                }}
+              />
             )}
 
             {activeTab === 'advanced' && (
@@ -505,6 +463,21 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         settings.useWebGL ? 'translate-x-6' : 'translate-x-0'
                       }`}
                     />
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t app-border opacity-60" />
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Developer Tools</label>
+                  <p className="text-xs app-text-muted">
+                    Open DevTools for this window.
+                  </p>
+                  <button
+                    onClick={() => invoke('toggle_devtools').catch(console.error)}
+                    className="mt-2 px-3 py-2 app-surface border app-border hover:app-hover transition-colors"
+                  >
+                    Open DevTools
                   </button>
                 </div>
               </div>

@@ -71,7 +71,7 @@ export function TitleBar() {
         {settings.showKubectlButton && <K8sButton />}
         <MenuButton />
       </div>
-      <div className="w-px h-4 mx-1 app-border" />
+      <div className="h-6 border-l app-border mx-2" />
       <WindowControls />
     </div>
   );

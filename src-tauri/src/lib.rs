@@ -52,6 +52,7 @@ pub fn run() {
             window_unmaximize,
             window_close,
             is_maximized,
+            toggle_devtools,
             // PTY commands
             create_pty_session,
             create_ratel_session,
