@@ -60,7 +60,7 @@ export function ShortcutRecorder({ value, onChange }: ShortcutRecorderProps) {
       className={`px-3 py-1.5 border text-sm font-mono min-w-[120px] text-center transition-colors ${
         isRecording
           ? 'bg-blue-600 border-blue-500 text-white animate-pulse'
-          : 'bg-gray-700 border-gray-600 hover:border-gray-500'
+          : 'app-surface-2 app-border app-text hover:border-[color:var(--app-text-muted)]'
       }`}
     >
       {isRecording ? 'Press keys...' : value || 'None'}

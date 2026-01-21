@@ -662,9 +662,9 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
           />
         )}
         {!isInitialized && (
-          <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+          <div className="absolute inset-0 flex items-center justify-center app-text-muted">
             <div className="text-center">
-              <div className="animate-spin h-8 w-8 border-b-2 border-gray-400 mx-auto mb-2"></div>
+              <div className="animate-spin h-8 w-8 border-b-2 border-[color:var(--app-text-muted)] mx-auto mb-2"></div>
               <p>Initializing terminal...</p>
             </div>
           </div>

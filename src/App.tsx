@@ -84,12 +84,42 @@ function App() {
       return lum > 0.6;
     };
 
+    const hexToRgb = (hexColor: string) => {
+      const hex = hexColor.trim();
+      const m = hex.match(/^#([0-9a-fA-F]{6})$/);
+      if (!m) return null;
+
+      const n = parseInt(m[1], 16);
+      return {
+        r: (n >> 16) & 0xff,
+        g: (n >> 8) & 0xff,
+        b: n & 0xff,
+      };
+    };
+
     const isLight = isLightBackground(colors.background);
     const pickOnColor = (hexColor: string) => (isLightBackground(hexColor) ? '#000000' : '#ffffff');
 
-    const surface2 = isLight ? (colors.white || colors.brightWhite || colors.background) : colors.black;
-    const border = isLight ? (colors.brightCyan || colors.brightBlue || colors.brightBlack) : colors.brightBlack;
-    const textMuted = isLight ? (colors.brightBlue || colors.brightCyan || colors.white) : colors.brightBlack;
+    const fgRgb = hexToRgb(colors.foreground);
+    const textMutedFromFg = fgRgb ? `rgba(${fgRgb.r}, ${fgRgb.g}, ${fgRgb.b}, 0.65)` : colors.brightBlack;
+
+    const bgRgb = hexToRgb(colors.background);
+    const blendRgb = (from: { r: number; g: number; b: number }, to: { r: number; g: number; b: number }, t: number) => {
+      const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
+      return {
+        r: clamp(from.r + (to.r - from.r) * t),
+        g: clamp(from.g + (to.g - from.g) * t),
+        b: clamp(from.b + (to.b - from.b) * t),
+      };
+    };
+
+    const toRgbCss = (rgb: { r: number; g: number; b: number }) => `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+
+    const surface2 =
+      isLight && bgRgb && fgRgb ? toRgbCss(blendRgb(bgRgb, fgRgb, 0.04)) : (isLight ? (colors.white || colors.brightWhite || colors.background) : colors.black);
+    const border =
+      isLight && bgRgb && fgRgb ? toRgbCss(blendRgb(bgRgb, fgRgb, 0.18)) : (isLight ? (colors.brightBlack || colors.foreground) : colors.brightBlack);
+    const textMuted = isLight ? textMutedFromFg : colors.brightBlack;
     const hover = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.08)';
     const hover2 = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.12)';
 

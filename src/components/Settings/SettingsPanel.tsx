@@ -448,7 +448,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <label className="block text-sm font-medium">WebGL Renderer (Experimental)</label>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs app-text-muted">
                       Enable WebGL rendering for better performance. May cause issues on some systems.
                     </p>
                   </div>
