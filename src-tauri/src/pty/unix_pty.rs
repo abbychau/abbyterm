@@ -4,7 +4,55 @@ use std::fs::File;
 use std::io::Write;
 use std::os::unix::io::{FromRawFd, RawFd};
 use std::os::unix::process::CommandExt;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
+
+fn terminfo_entry_exists(term: &str) -> bool {
+    let first = term.chars().next().unwrap_or('x');
+    let subdir = if first.is_ascii_alphanumeric() {
+        first.to_ascii_lowercase().to_string()
+    } else {
+        format!("{:x}", first as u32)
+    };
+
+    let mut search_dirs: Vec<PathBuf> = Vec::new();
+
+    if let Ok(dir) = std::env::var("TERMINFO") {
+        if !dir.trim().is_empty() {
+            search_dirs.push(PathBuf::from(dir));
+        }
+    }
+
+    if let Ok(dirs) = std::env::var("TERMINFO_DIRS") {
+        for part in dirs.split(':') {
+            let trimmed = part.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            search_dirs.push(PathBuf::from(trimmed));
+        }
+    }
+
+    // Common system terminfo locations.
+    search_dirs.push(PathBuf::from("/usr/share/terminfo"));
+    search_dirs.push(PathBuf::from("/lib/terminfo"));
+    search_dirs.push(PathBuf::from("/etc/terminfo"));
+    search_dirs.push(PathBuf::from("/usr/share/lib/terminfo"));
+
+    let rel_path = Path::new(&subdir).join(term);
+    search_dirs.into_iter().any(|dir| dir.join(&rel_path).exists())
+}
+
+fn choose_term() -> &'static str {
+    if terminfo_entry_exists("xterm-256color") {
+        return "xterm-256color";
+    }
+    if terminfo_entry_exists("xterm") {
+        return "xterm";
+    }
+    // Broadly available fallback that still provides sane cursor-key behavior.
+    "ansi"
+}
 
 pub struct UnixPty {
     pub master_fd: RawFd,
@@ -86,7 +134,7 @@ impl UnixPty {
         if let Some(args) = args {
             command.args(args);
         }
-        command.env("TERM", "xterm-256color");
+        command.env("TERM", choose_term());
 
         if let Some(dir) = cwd {
             command.current_dir(dir);

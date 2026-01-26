@@ -333,6 +333,26 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
       if (e.type !== 'keydown') return true;
 
+      // Arrow keys must always reach the PTY as escape sequences.
+      // If they degrade to plain A/B/C/D, editors like Vim will insert letters instead of moving.
+      // Handle the common no-modifier case here and bypass xterm's processing.
+      if (!e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+        let seq: string | null = null;
+        if (e.key === 'ArrowUp') seq = '\u001b[A';
+        else if (e.key === 'ArrowDown') seq = '\u001b[B';
+        else if (e.key === 'ArrowRight') seq = '\u001b[C';
+        else if (e.key === 'ArrowLeft') seq = '\u001b[D';
+
+        if (seq) {
+          e.preventDefault();
+          e.stopPropagation();
+          invoke('pty_write', { sessionId, data: seq }).catch((err) => {
+            console.error('Failed to write arrow key to PTY:', err);
+          });
+          return false;
+        }
+      }
+
       const modifiers = [];
       if (e.ctrlKey) modifiers.push('Ctrl');
       if (e.shiftKey) modifiers.push('Shift');

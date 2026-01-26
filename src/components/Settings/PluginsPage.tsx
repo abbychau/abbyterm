@@ -15,7 +15,7 @@ export function PluginsPage({ onOpenTab }: PluginsPageProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3">
         {plugins.map((plugin) => (
           <div
             key={plugin.id}
@@ -24,7 +24,7 @@ export function PluginsPage({ onOpenTab }: PluginsPageProps) {
             <img
               src={plugin.thumbnailSrc}
               alt=""
-              className="w-12 h-12 rounded-md object-cover flex-shrink-0"
+              className="w-[150px] rounded-md object-cover flex-shrink-0"
               draggable={false}
             />
 
