@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "regenerate-icons": "tmpfile=$(mktemp -t abbyterm-icon-XXXXXX.png) && cp public/hamham.png \"$tmpfile\" && npx tauri icon \"$tmpfile\" && rm -f \"$tmpfile\"",
     "update": "npm run build && ./reinstall_deb.sh",
     "dev": "echo 'DO NOT RUN under VSCode.' && tauri dev",
     "build": "tauri build",
