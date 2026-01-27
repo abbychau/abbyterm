@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Settings, SettingsStore, Theme, defaultThemes, Shortcuts } from '@/types/settings';
+import { terminalPlugins } from '@/plugins/terminal/registry';
 
 export const defaultShortcuts: Shortcuts = {
   copy: 'Ctrl+Shift+C',
@@ -33,6 +34,9 @@ const defaultSettings: Settings = {
   dockerExecutablePath: '',
   kubectlExecutablePath: '',
   shortcuts: defaultShortcuts,
+  ratelHost: '192.252.182.94',
+  ratelPort: 9999,
+  terminalPlugins: Object.fromEntries(terminalPlugins.map((p) => [p.id, p.defaultEnabled])),
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -75,6 +79,19 @@ export const useSettingsStore = create<SettingsStore>()(
           },
           // Ensure defaultCwd is set even for existing users
           defaultCwd: persistedState?.settings?.defaultCwd || defaultSettings.defaultCwd,
+
+          // Ensure Ratel connection defaults exist
+          ratelHost: persistedState?.settings?.ratelHost || defaultSettings.ratelHost,
+          ratelPort:
+            typeof persistedState?.settings?.ratelPort === 'number'
+              ? persistedState.settings.ratelPort
+              : defaultSettings.ratelPort,
+
+          // Ensure terminalPlugins exists and new plugins get defaults
+          terminalPlugins: {
+            ...defaultSettings.terminalPlugins,
+            ...(persistedState?.settings?.terminalPlugins || {}),
+          },
         };
 
         return {

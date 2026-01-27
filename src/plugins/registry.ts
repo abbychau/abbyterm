@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { v4 as uuidv4 } from 'uuid';
 import type { Tab } from '@/types/tab';
+import { useSettingsStore } from '@/store/settingsStore';
 
 export type PluginId = 'ratel';
 
@@ -12,26 +13,25 @@ export interface PluginDefinition {
   open: () => Promise<Tab>;
 }
 
-const RATEL_HOST = '192.252.182.94';
-const RATEL_PORT = 9999;
-
 export const plugins: PluginDefinition[] = [
   {
     id: 'ratel',
     name: 'Ratel',
-    description: `Connects to ${RATEL_HOST}:${RATEL_PORT}`,
+    description: 'Connect to a Ratel server.',
     thumbnailSrc: '/hamham-poker.png',
     open: async () => {
+      const { ratelHost, ratelPort } = useSettingsStore.getState().settings;
+
       const sessionId = await invoke<string>('create_ratel_session', {
-        host: RATEL_HOST,
-        port: RATEL_PORT,
+        host: ratelHost,
+        port: ratelPort,
         cols: 80,
         rows: 24,
       });
 
       return {
         id: uuidv4(),
-        title: `Ratel: ${RATEL_HOST}:${RATEL_PORT}`,
+        title: `Ratel: ${ratelHost}:${ratelPort}`,
         sessionId,
         type: 'plugin',
       };

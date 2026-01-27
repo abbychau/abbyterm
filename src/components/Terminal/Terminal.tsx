@@ -14,13 +14,16 @@ import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { SearchBox } from './SearchBox';
 import { TerminalContextMenu } from './TerminalContextMenu';
 import 'xterm/css/xterm.css';
+import { activateEnabledTerminalPlugins } from '@/plugins/terminal/runtime';
 
 export function Terminal({ sessionId, isActive }: TerminalProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const webglAddonRef = useRef<WebglAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
+  const terminalPluginsRef = useRef<{ dispose: () => void } | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { settings } = useSettingsStore();
@@ -92,6 +95,32 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
   useEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
+
+  useEffect(() => {
+    const term = xtermRef.current;
+    const container = containerRef.current;
+    if (!term || !container || (term as any).isDisposed) return;
+
+    terminalPluginsRef.current?.dispose();
+
+    terminalPluginsRef.current = activateEnabledTerminalPlugins(
+      {
+        sessionId,
+        term,
+        container,
+        getThemeColors: () => {
+          const colors = Object.values(settingsRef.current.theme.colors);
+          return colors.filter((c) => typeof c === 'string' && c.startsWith('#')) as string[];
+        },
+      },
+      settings
+    );
+
+    return () => {
+      terminalPluginsRef.current?.dispose();
+      terminalPluginsRef.current = null;
+    };
+  }, [settings.terminalPlugins, settings.theme, sessionId]);
 
   // Focus terminal when it becomes active
   // Update terminal settings when they change
@@ -632,6 +661,9 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       isMounted = false;
       isDisposed = true;
 
+      terminalPluginsRef.current?.dispose();
+      terminalPluginsRef.current = null;
+
       // Clear timeouts and intervals
       clearTimeout(openTimeout);
       if (term && (term as any)._fitTimeout) {
@@ -669,6 +701,7 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       onClear={handleClear}
     >
       <div
+        ref={containerRef}
         className="w-full h-full relative overflow-hidden"
         style={{ backgroundColor: settings.theme.colors.background }}
       >

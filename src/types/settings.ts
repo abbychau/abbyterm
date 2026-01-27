@@ -40,6 +40,9 @@ export interface Settings {
   dockerExecutablePath: string;
   kubectlExecutablePath: string;
   shortcuts: Shortcuts;
+  ratelHost: string;
+  ratelPort: number;
+  terminalPlugins?: Record<string, boolean>;
 }
 
 export interface Shortcuts {
