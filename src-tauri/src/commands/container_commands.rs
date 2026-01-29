@@ -35,8 +35,15 @@ fn find_command(cmd: &str) -> String {
         }
     }
 
-    // Try to find in PATH
-    if let Ok(output) = std::process::Command::new("which").arg(cmd).output() {
+    // Try to find in PATH using shell to ensure proper PATH is loaded
+    // Use login shell to get the full PATH environment
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+    if let Ok(output) = std::process::Command::new(&shell)
+        .arg("-l")
+        .arg("-c")
+        .arg(format!("which {}", cmd))
+        .output()
+    {
         if output.status.success() {
             if let Ok(path) = String::from_utf8(output.stdout) {
                 let path = path.trim();

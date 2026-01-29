@@ -131,9 +131,15 @@ impl UnixPty {
             .unwrap_or_else(|| "/bin/bash".to_string());
 
         let mut command = Command::new(&shell_path);
+
+        // If no custom args provided, make it a login shell to source profile files
         if let Some(args) = args {
             command.args(args);
+        } else {
+            // Run as login shell to source ~/.zprofile, ~/.bash_profile, etc.
+            command.arg("-l");
         }
+
         command.env("TERM", choose_term());
 
         if let Some(dir) = cwd {

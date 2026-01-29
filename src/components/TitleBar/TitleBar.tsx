@@ -48,13 +48,13 @@ export function TitleBar() {
   return (
     <div className={`h-10 app-surface border-b app-border flex items-center justify-between select-none `}>
       {/* Left section - Title */}
-      <div 
-        data-tauri-drag-region 
-        className="flex items-center gap-2 px-1 select-none"
+      <div
+        data-tauri-drag-region
+        className="flex items-center gap-2 px-1 select-none max-w-md"
         onDoubleClick={handleDoubleClick}
       >
-        <img src="/hamham.png" alt="Icon" className="w-8 h-8 pointer-events-none m-1" />
-        <span className="text-sm font-semibold app-text -ml-2 pointer-events-none">{activeTabTitle || 'AbbyTerm'}</span>
+        <img src="/hamham.png" alt="Icon" className="w-8 h-8 pointer-events-none m-1 flex-shrink-0" />
+        <span className="text-sm font-semibold app-text -ml-2 pointer-events-none line-clamp-2 overflow-hidden break-words">{activeTabTitle || 'AbbyTerm'}</span>
       </div>
 
       {/* Middle spacer - DRAGGABLE with JS handler */}
