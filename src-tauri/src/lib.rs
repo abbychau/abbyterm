@@ -1,6 +1,7 @@
 mod commands;
 mod pty;
 mod ssh_config;
+#[cfg(unix)]
 mod ratel_mode;
 
 use commands::pty_commands::*;
@@ -12,6 +13,7 @@ use pty::manager::PtyManager;
 use std::sync::Mutex;
 use tauri::State;
 
+#[cfg(unix)]
 pub use ratel_mode::run_ratel;
 
 struct InitialCliArgs {
@@ -55,6 +57,7 @@ pub fn run() {
             toggle_devtools,
             // PTY commands
             create_pty_session,
+            #[cfg(unix)]
             create_ratel_session,
             pty_write,
             pty_resize,

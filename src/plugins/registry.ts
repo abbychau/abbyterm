@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { v4 as uuidv4 } from 'uuid';
 import type { Tab } from '@/types/tab';
 import { useSettingsStore } from '@/store/settingsStore';
+import { platform } from '@tauri-apps/plugin-os';
 
 export type PluginId = 'ratel';
 
@@ -11,14 +12,16 @@ export interface PluginDefinition {
   description: string;
   thumbnailSrc: string;
   open: () => Promise<Tab>;
+  supportedPlatforms?: string[]; // Optional: if not specified, plugin is available on all platforms
 }
 
-export const plugins: PluginDefinition[] = [
+const allPlugins: PluginDefinition[] = [
   {
     id: 'ratel',
     name: 'Ratel',
     description: 'Connect to a Ratel server.',
     thumbnailSrc: '/hamham-poker.png',
+    supportedPlatforms: ['linux', 'macos'], // Unix-only
     open: async () => {
       const { ratelHost, ratelPort } = useSettingsStore.getState().settings;
 
@@ -38,3 +41,12 @@ export const plugins: PluginDefinition[] = [
     },
   },
 ];
+
+// Filter plugins based on current platform
+const currentPlatform = platform();
+export const plugins: PluginDefinition[] = allPlugins.filter(plugin => {
+  if (!plugin.supportedPlatforms) {
+    return true; // Available on all platforms
+  }
+  return plugin.supportedPlatforms.includes(currentPlatform);
+});

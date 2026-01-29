@@ -2,6 +2,7 @@ use crate::pty::manager::PtyManager;
 use tauri::{AppHandle, State};
 use uuid::Uuid;
 
+#[cfg(unix)]
 #[tauri::command]
 pub async fn create_ratel_session(
     host: String,
@@ -35,10 +36,9 @@ pub async fn create_pty_session(
     manager: State<'_, PtyManager>,
     app: AppHandle,
 ) -> Result<String, String> {
-    // Expand tilde in cwd path
     let cwd_path = cwd.map(|path| {
         if path.starts_with("~/") || path == "~" {
-            let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+            let home = std::env::var("HOME").unwrap_or_else(|_| std::env::var("USERPROFILE").unwrap_or_else(|_| "/".to_string()));
             let expanded = if path == "~" {
                 home
             } else {
