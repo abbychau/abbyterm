@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { v4 as uuidv4 } from 'uuid';
-import type { Tab } from '@/types/tab';
+import type { Tab, TerminalPane } from '@/types/tab';
 import { useSettingsStore } from '@/store/settingsStore';
 
 export type PluginId = 'ratel';
@@ -29,11 +29,20 @@ export const plugins: PluginDefinition[] = [
         rows: 24,
       });
 
+      const terminalPane: TerminalPane = {
+        type: 'terminal',
+        id: uuidv4(),
+        sessionId,
+        title: `Ratel: ${ratelHost}:${ratelPort}`,
+        tabType: 'plugin',
+      };
+
       return {
         id: uuidv4(),
         title: `Ratel: ${ratelHost}:${ratelPort}`,
         sessionId,
         type: 'plugin',
+        rootPane: terminalPane,
       };
     },
   },

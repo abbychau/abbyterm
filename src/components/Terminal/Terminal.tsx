@@ -7,7 +7,7 @@ import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-shell';
 import { TerminalProps } from '@/types/terminal';
 import { useSettingsStore } from '@/store/settingsStore';
-import { useTabStore } from '@/store/tabStore';
+import { useTabStore, tabStore } from '@/store/tabStore';
 import { WebglAddon } from 'xterm-addon-webgl';
 import { SearchAddon } from 'xterm-addon-search';
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
@@ -16,7 +16,7 @@ import { TerminalContextMenu } from './TerminalContextMenu';
 import 'xterm/css/xterm.css';
 import { activateEnabledTerminalPlugins } from '@/plugins/terminal/runtime';
 
-export function Terminal({ sessionId, isActive }: TerminalProps) {
+export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
@@ -27,8 +27,15 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { settings } = useSettingsStore();
-  const updateTab = useTabStore((state) => state.updateTab);
+  const { updateTab } = useTabStore.getState();
   const settingsRef = useRef(settings);
+  const cwdIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isActiveRef = useRef(isActive);
+
+  // Update ref when isActive changes
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive, isPrimaryPane]);
 
   const handleCopy = async () => {
     const term = xtermRef.current;
@@ -169,9 +176,9 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
 
   useEffect(() => {
     if (isActive && xtermRef.current && !(xtermRef.current as any).isDisposed) {
-      // Wait for layout to update (display: none -> block)
-      setTimeout(() => {
-        if (fitAddonRef.current) {
+      // Use requestAnimationFrame to ensure layout has completed before fitting
+      requestAnimationFrame(() => {
+        if (fitAddonRef.current && xtermRef.current && !(xtermRef.current as any).isDisposed) {
           try {
             fitAddonRef.current.fit();
             // Sync PTY size
@@ -187,10 +194,59 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
             console.error('Failed to fit terminal on activation:', e);
           }
         }
-        xtermRef.current?.focus();
-      }, 50);
+      });
+      xtermRef.current?.focus();
     }
   }, [isActive, sessionId]);
+
+  // Start/stop CWD polling when tab becomes active/inactive
+  useEffect(() => {
+    if (xtermRef.current) {
+      const startCwdPolling = () => {
+        // Clear any existing interval
+        if (cwdIntervalRef.current) {
+          clearInterval(cwdIntervalRef.current);
+        }
+
+        cwdIntervalRef.current = setInterval(async () => {
+          // Only poll if tab is active
+          if (!isActiveRef.current) return;
+
+          try {
+            const tabs = tabStore.getState().tabs;
+            const tab = tabs.find((t) => t.sessionId === sessionId);
+
+            // Skip CWD polling for Docker and K8s tabs
+            if (!tab || tab.type !== 'local') return;
+            if (tab.title?.startsWith('Docker:') || tab.title?.startsWith('K8s:') || tab.title?.startsWith('SSH:')) {
+              return;
+            }
+
+            // For split panes, only primary pane should update tab title
+            if (!isPrimaryPane) return;
+
+            const cwd = await invoke<string>('get_session_cwd', { sessionId });
+
+            if (cwd && tab.title !== cwd) {
+              // Show full path
+              updateTab(tab.id, { title: cwd });
+            }
+          } catch (err) {
+            // Silently ignore errors - process might not exist or permission denied
+            console.debug('Failed to get session cwd:', err);
+          }
+        }, 2000); // Poll every 2 seconds
+      };
+
+      startCwdPolling();
+
+      return () => {
+        if (cwdIntervalRef.current) {
+          clearInterval(cwdIntervalRef.current);
+        }
+      };
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     const terminalElement = terminalRef.current;
@@ -268,9 +324,15 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
 
     // Handle title change from OSC sequences (including OSC 7 for directory)
     term.onTitleChange((title) => {
-      const tabs = useTabStore.getState().tabs;
+      // Only update title if this terminal is active
+      if (!isActiveRef.current) return;
+
+      const tabs = tabStore.getState().tabs;
       const tab = tabs.find((t) => t.sessionId === sessionId);
       if (tab) {
+        // For split panes, only the primary pane should update the tab title
+        if (!isPrimaryPane) return;
+
         let nextTitle = title;
 
         // For local terminals, prefer displaying directory, not the full user@host prompt.
@@ -285,36 +347,17 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       }
     });
 
-    // Periodically fetch the current working directory from the shell process
-    // Only for actual local terminals, not for docker/k8s exec sessions
-    const cwdInterval = setInterval(async () => {
-      try {
-        const tabs = useTabStore.getState().tabs;
-        const tab = tabs.find((t) => t.sessionId === sessionId);
-
-        // Skip CWD polling for Docker and K8s tabs
-        if (!tab || tab.type !== 'local') return;
-        if (tab.title?.startsWith('Docker:') || tab.title?.startsWith('K8s:') || tab.title?.startsWith('SSH:')) {
-          return;
-        }
-
-        const cwd = await invoke<string>('get_session_cwd', { sessionId });
-
-        if (cwd && tab.title !== cwd) {
-          // Show full path
-          updateTab(tab.id, { title: cwd });
-        }
-      } catch (err) {
-        // Silently ignore errors - process might not exist or permission denied
-        console.debug('Failed to get session cwd:', err);
-      }
-    }, 2000); // Poll every 2 seconds
-
     // Handle prompt detection for title update
     term.onCursorMove(() => {
-      const tabs = useTabStore.getState().tabs;
+      // Only update title if this terminal is active
+      if (!isActiveRef.current) return;
+
+      const tabs = tabStore.getState().tabs;
       const tab = tabs.find((t) => t.sessionId === sessionId);
       if (!tab) return;
+
+      // For split panes, only primary pane should update the tab title
+      if (tab.sessionId !== sessionId) return;
 
       const buffer = term?.buffer.active;
       if (!buffer) return;
@@ -669,7 +712,6 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       if (term && (term as any)._fitTimeout) {
         clearTimeout((term as any)._fitTimeout);
       }
-      clearInterval(cwdInterval);
 
       resizeObserver.disconnect();
 
@@ -699,6 +741,8 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       onPaste={handlePaste}
       onSelectAll={handleSelectAll}
       onClear={handleClear}
+      tabId={tabId}
+      paneId={paneId}
     >
       <div
         ref={containerRef}

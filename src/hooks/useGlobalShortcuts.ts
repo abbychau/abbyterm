@@ -63,6 +63,13 @@ export function useGlobalShortcuts() {
             title: 'Terminal',
             sessionId,
             type: 'local',
+            rootPane: {
+              type: 'terminal',
+              id: tabId,
+              sessionId,
+              title: 'Terminal',
+              tabType: 'local',
+            },
           });
         } catch (err) {
           console.error('Failed to create terminal via shortcut:', err);

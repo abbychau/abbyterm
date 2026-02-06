@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Terminal } from './Terminal';
+import { SplitPane } from './SplitPane';
 import { useTabStore } from '@/store/tabStore';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
@@ -30,10 +30,10 @@ export function TerminalContainer() {
     return (
       <div className="flex-1 flex items-center justify-center p-8 select-none">
         <div className="flex flex-col items-center gap-6 opacity-30 hover:opacity-50 transition-opacity duration-700">
-          <img 
-            src="/hamham.png" 
-            alt="No Terminal" 
-            className="w-80 h-80 object-contain grayscale brightness-75 pointer-events-none" 
+          <img
+            src="/hamham.png"
+            alt="No Terminal"
+            className="w-80 h-80 object-contain grayscale brightness-75 pointer-events-none"
           />
           <h2 className="font-mono text-sm tracking-[0.5em] text-gray-400 uppercase">
             No Terminal Open
@@ -51,7 +51,7 @@ export function TerminalContainer() {
           className="w-full h-full"
           style={{ display: tab.id === activeTabId ? 'block' : 'none' }}
         >
-          <Terminal sessionId={tab.sessionId} isActive={tab.id === activeTabId} />
+          <SplitPane pane={tab.rootPane} isActive={tab.id === activeTabId} tabId={tab.id} />
         </div>
       ))}
     </div>

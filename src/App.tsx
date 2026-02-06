@@ -175,20 +175,23 @@ function App() {
         }
 
         const args = await invoke<string[] | null>('get_initial_args');
-        
+
+        // Only auto-start a local terminal if there are initial arguments
+        if (!args || args.length === 0) {
+          return;
+        }
+
         let shell: string | undefined;
         let shellArgs: string[] | undefined;
 
-        if (args && args.length > 0) {
-            if (args.length === 1 && args[0].includes(' ')) {
-                const parts = args[0].split(' ');
-                shell = parts[0];
-                shellArgs = parts.slice(1);
-            } else {
-                shell = args[0];
-                if (args.length > 1) {
-                    shellArgs = args.slice(1);
-                }
+        if (args.length === 1 && args[0].includes(' ')) {
+            const parts = args[0].split(' ');
+            shell = parts[0];
+            shellArgs = parts.slice(1);
+        } else {
+            shell = args[0];
+            if (args.length > 1) {
+                shellArgs = args.slice(1);
             }
         }
 
@@ -205,6 +208,13 @@ function App() {
           title: shell || 'Local',
           sessionId,
           type: 'local',
+          rootPane: {
+            type: 'terminal',
+            id: uuidv4(),
+            sessionId,
+            title: shell || 'Local',
+            tabType: 'local',
+          },
         });
       } catch (error) {
         console.error('Failed to initialize terminal:', error);

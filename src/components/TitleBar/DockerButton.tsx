@@ -97,12 +97,19 @@ export function DockerButton() {
         data: dockerCommand,
       });
 
-      // Add tab to store
+      // Add tab to store with rootPane structure
       addTab({
         id: tabId,
         title: `Docker: ${container.name}`,
         sessionId,
         type: 'local',
+        rootPane: {
+          type: 'terminal',
+          id: tabId,
+          sessionId,
+          title: `Docker: ${container.name}`,
+          tabType: 'local',
+        },
       });
     } catch (err) {
       console.error('Failed to connect to Docker container:', err);

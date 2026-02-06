@@ -74,12 +74,19 @@ export function K8sButton() {
         data: kubectlCommand,
       });
 
-      // Add tab to store
+      // Add tab to store with rootPane structure
       addTab({
         id: tabId,
         title: `K8s: ${pod.namespace}/${pod.name}`,
         sessionId,
         type: 'local',
+        rootPane: {
+          type: 'terminal',
+          id: tabId,
+          sessionId,
+          title: `K8s: ${pod.namespace}/${pod.name}`,
+          tabType: 'local',
+        },
       });
     } catch (err) {
       console.error('Failed to connect to Kubernetes pod:', err);

@@ -46,12 +46,19 @@ export function NewTabButton() {
         rows: 24,
       });
 
-      // Add tab to store
+      // Add tab to store with rootPane structure
       addTab({
         id: tabId,
         title: 'Local',
         sessionId,
         type: 'local',
+        rootPane: {
+          type: 'terminal',
+          id: tabId,
+          sessionId,
+          title: 'Local',
+          tabType: 'local',
+        },
       });
     } catch (err) {
       console.error('Failed to create terminal:', err);
@@ -91,12 +98,19 @@ export function NewTabButton() {
         data: sshCommand + '\n',
       });
 
-      // Add tab to store
+      // Add tab to store with rootPane structure
       addTab({
         id: tabId,
         title: `SSH: ${host.name}`,
         sessionId,
         type: 'ssh',
+        rootPane: {
+          type: 'terminal',
+          id: tabId,
+          sessionId,
+          title: `SSH: ${host.name}`,
+          tabType: 'ssh',
+        },
       });
     } catch (err) {
       console.error('Failed to create SSH connection:', err);

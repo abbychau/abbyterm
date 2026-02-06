@@ -1,6 +1,9 @@
 export interface TerminalProps {
   sessionId: string;
   isActive?: boolean;
+  tabId?: string;
+  paneId?: string;
+  isPrimaryPane?: boolean;
 }
 
 export interface TerminalTheme {

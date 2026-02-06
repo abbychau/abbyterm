@@ -8,6 +8,7 @@ use commands::ssh_commands::*;
 use commands::window_commands::*;
 use commands::shell_commands::*;
 use commands::container_commands::*;
+use commands::session_commands::*;
 use pty::manager::PtyManager;
 use std::sync::Mutex;
 use tauri::State;
@@ -69,6 +70,10 @@ pub fn run() {
             get_kubernetes_pods,
             check_kubectl_available,
             check_docker_available,
+            // Session commands
+            save_session_snapshot,
+            get_session_snapshots,
+            delete_session_snapshot,
             // CLI args
             get_initial_args,
         ])

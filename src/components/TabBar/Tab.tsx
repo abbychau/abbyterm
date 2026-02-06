@@ -8,21 +8,39 @@ interface TabProps {
   id: string;
   title: string;
   isActive: boolean;
-  sessionId: string;
 }
 
-export function Tab({ id, title, isActive, sessionId }: TabProps) {
+export function Tab({ id, title, isActive }: TabProps) {
   const { setActiveTab, removeTab } = useTabStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const handleClose = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    // Kill PTY session
-    try {
-      await invoke('pty_kill', { sessionId });
-    } catch (err) {
-      console.error('Failed to kill PTY session:', err);
+    // Find the tab to get all PTY session IDs from its panes
+    const { tabs } = useTabStore.getState();
+    const tab = tabs.find((t) => t.id === id);
+    if (tab) {
+      // Recursively collect all session IDs from the pane tree
+      const collectSessionIds = (pane: any): string[] => {
+        if (pane.type === 'terminal') {
+          return [pane.sessionId];
+        } else if (pane.type === 'split') {
+          return pane.children.flatMap((child: any) => collectSessionIds(child));
+        }
+        return [];
+      };
+
+      const sessionIds = collectSessionIds(tab.rootPane);
+
+      // Kill all PTY sessions in this tab
+      for (const sid of sessionIds) {
+        try {
+          await invoke('pty_kill', { sessionId: sid });
+        } catch (err) {
+          console.error('Failed to kill PTY session:', sid, err);
+        }
+      }
     }
 
     // Remove tab from store
@@ -63,7 +81,6 @@ export function Tab({ id, title, isActive, sessionId }: TabProps) {
           x={contextMenu.x}
           y={contextMenu.y}
           tabId={id}
-          sessionId={sessionId}
           onClose={() => setContextMenu(null)}
         />
       )}

@@ -16,7 +16,6 @@ export function TabBar() {
           id={tab.id}
           title={tab.title}
           isActive={tab.id === activeTabId}
-          sessionId={tab.sessionId}
         />
       ))}
     </div>

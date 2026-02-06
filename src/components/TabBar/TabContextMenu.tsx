@@ -7,11 +7,10 @@ interface TabContextMenuProps {
   x: number;
   y: number;
   tabId: string;
-  sessionId: string;
   onClose: () => void;
 }
 
-export function TabContextMenu({ x, y, tabId, sessionId, onClose }: TabContextMenuProps) {
+export function TabContextMenu({ x, y, tabId, onClose }: TabContextMenuProps) {
   const { tabs, removeTab } = useTabStore();
   const menuRef = useRef<HTMLDivElement>(null);
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'success' | 'error'>('idle');
@@ -34,10 +33,25 @@ export function TabContextMenu({ x, y, tabId, sessionId, onClose }: TabContextMe
   }, [onClose]);
 
   const handleClose = async () => {
-    try {
-      await invoke('pty_kill', { sessionId });
-    } catch (err) {
-      console.error('Failed to kill PTY session:', err);
+    const currentTab = tabs.find((t) => t.id === tabId);
+    if (currentTab) {
+      const collectSessionIds = (pane: any): string[] => {
+        if (pane.type === 'terminal') {
+          return [pane.sessionId];
+        } else if (pane.type === 'split') {
+          return pane.children.flatMap((child: any) => collectSessionIds(child));
+        }
+        return [];
+      };
+
+      const sessionIds = collectSessionIds(currentTab.rootPane);
+      for (const sid of sessionIds) {
+        try {
+          await invoke('pty_kill', { sessionId: sid });
+        } catch (err) {
+          console.error('Failed to kill PTY session:', sid, err);
+        }
+      }
     }
     removeTab(tabId);
     onClose();
@@ -46,10 +60,22 @@ export function TabContextMenu({ x, y, tabId, sessionId, onClose }: TabContextMe
   const handleCloseOthers = async () => {
     const otherTabs = tabs.filter((t) => t.id !== tabId);
     for (const tab of otherTabs) {
-      try {
-        await invoke('pty_kill', { sessionId: tab.sessionId });
-      } catch (err) {
-        console.error(`Failed to kill PTY session for tab ${tab.id}:`, err);
+      const collectSessionIds = (pane: any): string[] => {
+        if (pane.type === 'terminal') {
+          return [pane.sessionId];
+        } else if (pane.type === 'split') {
+          return pane.children.flatMap((child: any) => collectSessionIds(child));
+        }
+        return [];
+      };
+
+      const sessionIds = collectSessionIds(tab.rootPane);
+      for (const sid of sessionIds) {
+        try {
+          await invoke('pty_kill', { sessionId: sid });
+        } catch (err) {
+          console.error(`Failed to kill PTY session for tab ${tab.id}:`, err);
+        }
       }
       removeTab(tab.id);
     }
@@ -62,10 +88,22 @@ export function TabContextMenu({ x, y, tabId, sessionId, onClose }: TabContextMe
 
     const tabsToRight = tabs.slice(index + 1);
     for (const tab of tabsToRight) {
-      try {
-        await invoke('pty_kill', { sessionId: tab.sessionId });
-      } catch (err) {
-        console.error(`Failed to kill PTY session for tab ${tab.id}:`, err);
+      const collectSessionIds = (pane: any): string[] => {
+        if (pane.type === 'terminal') {
+          return [pane.sessionId];
+        } else if (pane.type === 'split') {
+          return pane.children.flatMap((child: any) => collectSessionIds(child));
+        }
+        return [];
+      };
+
+      const sessionIds = collectSessionIds(tab.rootPane);
+      for (const sid of sessionIds) {
+        try {
+          await invoke('pty_kill', { sessionId: sid });
+        } catch (err) {
+          console.error(`Failed to kill PTY session for tab ${tab.id}:`, err);
+        }
       }
       removeTab(tab.id);
     }
@@ -85,8 +123,25 @@ export function TabContextMenu({ x, y, tabId, sessionId, onClose }: TabContextMe
         const parts = currentTab?.title.replace('K8s: ', '').split('/') || [];
         textToCopy = parts[parts.length - 1] || ''; // Get the pod name (last part)
       } else {
-        // For local terminals, get the actual CWD
-        textToCopy = await invoke<string>('get_session_cwd', { sessionId });
+        // For local terminals, find the first terminal session ID and get the actual CWD
+        const findFirstTerminalSessionId = (pane: any): string | null => {
+          if (pane.type === 'terminal') {
+            return pane.sessionId;
+          } else if (pane.type === 'split') {
+            for (const child of pane.children) {
+              const sid = findFirstTerminalSessionId(child);
+              if (sid) return sid;
+            }
+          }
+          return null;
+        };
+
+        const firstSessionId = findFirstTerminalSessionId(currentTab?.rootPane);
+        if (firstSessionId) {
+          textToCopy = await invoke<string>('get_session_cwd', { sessionId: firstSessionId });
+        } else {
+          textToCopy = '';
+        }
       }
 
       await writeText(textToCopy);

@@ -4,6 +4,7 @@ import { MenuButton } from './MenuButton';
 import { NewTabButton } from './NewTabButton';
 import { DockerButton } from './DockerButton';
 import { K8sButton } from './K8sButton';
+import { SessionButton } from './SessionButton';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 import { useTabStore } from '@/store/tabStore';
@@ -67,6 +68,7 @@ export function TitleBar() {
       {/* Right section - Buttons (not draggable) */}
       <div className="flex items-center gap-1">
         <NewTabButton />
+        <SessionButton />
         {settings.showDockerButton && <DockerButton />}
         {settings.showKubectlButton && <K8sButton />}
         <MenuButton />
