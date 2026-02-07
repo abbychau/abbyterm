@@ -62,6 +62,13 @@ export const useSettingsStore = create<SettingsStore>()(
     {
       name: 'abbyterm-settings',
       merge: (persistedState: any, currentState) => {
+        // Merge persisted state first, then fill in defaults for any missing plugins
+        const persistedPlugins = persistedState?.settings?.terminalPlugins || {};
+        const mergedPlugins = {
+          ...persistedPlugins,
+          ...defaultSettings.terminalPlugins,
+        };
+
         // Deep merge settings to ensure new fields (like shortcuts, defaultCwd) are added
         // to existing persisted state
         const mergedSettings = {
@@ -87,11 +94,8 @@ export const useSettingsStore = create<SettingsStore>()(
               ? persistedState.settings.ratelPort
               : defaultSettings.ratelPort,
 
-          // Ensure terminalPlugins exists and new plugins get defaults
-          terminalPlugins: {
-            ...defaultSettings.terminalPlugins,
-            ...(persistedState?.settings?.terminalPlugins || {}),
-          },
+          // Use the merged plugins state
+          terminalPlugins: mergedPlugins,
         };
 
         return {
