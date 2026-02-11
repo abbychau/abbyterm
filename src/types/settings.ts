@@ -34,6 +34,7 @@ export interface Settings {
   scrollback: number;
   shell: string;
   defaultCwd: string;
+  autoStartLocalTerminal: boolean;
   useWebGL: boolean;
   showDockerButton: boolean;
   showKubectlButton: boolean;

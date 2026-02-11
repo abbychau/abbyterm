@@ -131,13 +131,26 @@ impl UnixPty {
             .unwrap_or_else(|| "/bin/bash".to_string());
 
         let mut command = Command::new(&shell_path);
+        let shell_name = Path::new(&shell_path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase();
 
-        // If no custom args provided, make it a login shell to source profile files
+        // If no custom args are provided, start an interactive shell and optionally login mode.
         if let Some(args) = args {
             command.args(args);
         } else {
-            // Run as login shell to source ~/.zprofile, ~/.bash_profile, etc.
-            command.arg("-l");
+            // Use an interactive shell so rc files (for nvm/npm PATH, aliases, etc.) are loaded.
+            // Add login mode for shells that support it to also load profile files.
+            let supports_login_flag = matches!(
+                shell_name.as_str(),
+                "bash" | "zsh" | "fish" | "ksh" | "mksh"
+            );
+            command.arg("-i");
+            if supports_login_flag {
+                command.arg("-l");
+            }
         }
 
         command.env("TERM", choose_term());

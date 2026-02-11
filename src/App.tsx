@@ -176,19 +176,19 @@ function App() {
 
         const args = await invoke<string[] | null>('get_initial_args');
 
-        // Only auto-start a local terminal if there are initial arguments
-        if (!args || args.length === 0) {
+        // Auto-start only when requested by command args or app settings.
+        if ((!args || args.length === 0) && !settings.autoStartLocalTerminal) {
           return;
         }
 
         let shell: string | undefined;
         let shellArgs: string[] | undefined;
 
-        if (args.length === 1 && args[0].includes(' ')) {
+        if (args && args.length === 1 && args[0].includes(' ')) {
             const parts = args[0].split(' ');
             shell = parts[0];
             shellArgs = parts.slice(1);
-        } else {
+        } else if (args && args.length > 0) {
             shell = args[0];
             if (args.length > 1) {
                 shellArgs = args.slice(1);

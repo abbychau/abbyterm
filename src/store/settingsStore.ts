@@ -28,6 +28,7 @@ const defaultSettings: Settings = {
   scrollback: 10000,
   shell: '/bin/bash',
   defaultCwd: '~',
+  autoStartLocalTerminal: false,
   useWebGL: false,
   showDockerButton: true,
   showKubectlButton: true,
@@ -86,6 +87,10 @@ export const useSettingsStore = create<SettingsStore>()(
           },
           // Ensure defaultCwd is set even for existing users
           defaultCwd: persistedState?.settings?.defaultCwd || defaultSettings.defaultCwd,
+          autoStartLocalTerminal:
+            typeof persistedState?.settings?.autoStartLocalTerminal === 'boolean'
+              ? persistedState.settings.autoStartLocalTerminal
+              : defaultSettings.autoStartLocalTerminal,
 
           // Ensure Ratel connection defaults exist
           ratelHost: persistedState?.settings?.ratelHost || defaultSettings.ratelHost,

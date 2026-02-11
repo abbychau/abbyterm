@@ -28,8 +28,10 @@ fn get_initial_args(state: State<'_, InitialCliArgs>) -> Option<Vec<String>> {
 pub fn run() {
     let args: Vec<String> = std::env::args().collect();
     let mut initial_args = None;
-    
-    if let Some(index) = args.iter().position(|arg| arg == "-e") {
+
+    let e_index = args.iter().position(|arg| arg == "-e");
+
+    if let Some(index) = e_index {
         if index + 1 < args.len() {
              initial_args = Some(args[index+1..].to_vec());
         }

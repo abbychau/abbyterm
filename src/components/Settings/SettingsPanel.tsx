@@ -415,6 +415,31 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   </p>
                 </div>
 
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-sm font-medium">Open Local Terminal On Startup</label>
+                    <p className="text-xs app-text-muted">
+                      Automatically create one local terminal tab when the app launches.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() =>
+                      updateSettings({ autoStartLocalTerminal: !settings.autoStartLocalTerminal })
+                    }
+                    className={`w-12 h-6 transition-colors relative ${
+                      settings.autoStartLocalTerminal
+                        ? 'bg-[color:var(--app-accent)]'
+                        : 'bg-[color:var(--app-border)]'
+                    }`}
+                  >
+                    <div
+                      className={`absolute top-1 left-1 w-4 h-4 bg-[color:var(--app-surface)] shadow-sm transition-transform ${
+                        settings.autoStartLocalTerminal ? 'translate-x-6' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
                 <div className="pt-2 border-t app-border opacity-60" />
 
                 <div>

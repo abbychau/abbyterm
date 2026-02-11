@@ -22,6 +22,10 @@
    npm run tauri dev
    ```
 
+### Startup Flags
+
+- `-e <shell> [args...]`: start with a local terminal running a specific shell/command.
+
 ## Building
 
 To build for production:
