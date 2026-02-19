@@ -37,13 +37,9 @@ export function TitleBar() {
 
 
   const handleDoubleClick = async () => {
-    if (isMaximized) {
-      await invoke('window_unmaximize');
-      setIsMaximized(false);
-    } else {
-      await invoke('window_maximize');
-      setIsMaximized(true);
-    }
+    
+    const maximized = await invoke<boolean>('is_maximized'); // ensure we have the latest state
+    setIsMaximized(maximized);
   };
 
   return (
