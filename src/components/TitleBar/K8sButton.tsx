@@ -1,10 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Cloud, RefreshCw, ServerIcon, ChevronRight } from 'lucide-react';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { Cloud, ServerIcon } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTabStore } from '@/store/tabStore';
 import { v4 as uuidv4 } from 'uuid';
 import { useSettingsStore } from '@/store/settingsStore';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownHeader,
+  DropdownStateMessage,
+  DropdownSub,
+} from './Dropdown/Dropdown';
 
 interface KubernetesPod {
   name: string;
@@ -46,7 +52,27 @@ export function K8sButton() {
       setKubernetesPods(pods);
     } catch (err) {
       console.error('Failed to load Kubernetes pods:', err);
-      setK8sError(String(err));
+      const errorStr = String(err);
+
+      // Extract user-friendly error message
+      let friendlyError = 'Failed to connect to Kubernetes cluster';
+
+      if (errorStr.includes('connection refused')) {
+        friendlyError = 'Cannot connect to cluster - is Kubernetes running?';
+      } else if (errorStr.includes('kubectl not found') || errorStr.includes('executable file not found')) {
+        friendlyError = 'kubectl not found - please install kubectl';
+      } else if (errorStr.includes('Unauthorized') || errorStr.includes('authentication')) {
+        friendlyError = 'Authentication failed - check kubectl config';
+      } else if (errorStr.includes('Kubectl command failed')) {
+        // Extract the first meaningful line from kubectl errors
+        const lines = errorStr.split('\n');
+        const connectionError = lines.find((l: string) => l.includes('connection refused') || l.includes('connect:'));
+        if (connectionError) {
+          friendlyError = 'Cannot connect to cluster - is Kubernetes running?';
+        }
+      }
+
+      setK8sError(friendlyError);
       setKubernetesPods([]);
     } finally {
       setIsLoadingK8s(false);
@@ -109,90 +135,54 @@ export function K8sButton() {
   }, [kubernetesPods]);
 
   const renderPodItem = (pod: KubernetesPod) => (
-    <DropdownMenu.Item
+    <DropdownItem
       key={`${pod.namespace}-${pod.name}`}
-      className="px-3 py-2 text-sm app-text  app-hover outline-none cursor-pointer flex items-center gap-2"
       onSelect={() => handleNewKubernetesTab(pod)}
+      icon={<ServerIcon size={16} />}
     >
-      <ServerIcon size={16} />
       <div className="flex flex-col flex-1 min-w-0">
         <span className="truncate">{pod.name}</span>
         <span className="text-xs app-text-muted truncate">{pod.ready} • {pod.status}</span>
       </div>
-    </DropdownMenu.Item>
+    </DropdownItem>
   );
 
   return (
-    <DropdownMenu.Root modal={false} onOpenChange={setIsOpen}>
-      <DropdownMenu.Trigger asChild>
-        <button
-          className="px-3 h-8 flex items-center justify-center app-hover  transition-colors"
-          aria-label="Kubernetes pods"
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Cloud size={16} className="app-text" />
-        </button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          className="min-w-[280px] app-surface-2 shadow-lg p-1 border app-border z-50 max-h-[500px] overflow-y-auto"
-          align="start"
-          sideOffset={5}
-        >
-          <div className="px-3 py-2 flex items-center justify-between">
-            <DropdownMenu.Label className="text-xs app-text-muted font-semibold">
-              KUBERNETES PODS
-            </DropdownMenu.Label>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                loadKubernetesPods();
-              }}
-              className="p-1 app-hover  transition-colors"
-              disabled={isLoadingK8s}
+    <Dropdown
+      trigger={<Cloud size={16} className="app-text" />}
+      isOpen={isOpen}
+      onOpenChange={setIsOpen}
+      ariaLabel="Kubernetes pods"
+    >
+      <DropdownHeader
+        label="KUBERNETES PODS"
+        onRefresh={loadKubernetesPods}
+        isRefreshing={isLoadingK8s}
+      />
+
+      {isLoadingK8s && <DropdownStateMessage type="loading" />}
+
+      {!isLoadingK8s && k8sError && <DropdownStateMessage type="error" message={k8sError} />}
+
+      {!isLoadingK8s && !k8sError && kubernetesPods.length === 0 && (
+        <DropdownStateMessage type="empty" message="No pods found" />
+      )}
+
+      {!isLoadingK8s && !k8sError && (
+        <>
+          {/* Render namespace groups as sub-menus */}
+          {Object.entries(groupedPods).map(([namespace, pods]) => (
+            <DropdownSub
+              key={namespace}
+              triggerIcon={<Cloud size={16} />}
+              triggerLabel={namespace}
+              triggerCount={pods.length}
             >
-              <RefreshCw size={12} className={`app-text-muted ${isLoadingK8s ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-          {isLoadingK8s && (
-            <div className="px-3 py-2 text-xs app-text-muted italic">
-              Loading...
-            </div>
-          )}
-          {!isLoadingK8s && k8sError && (
-            <div className="px-3 py-2 text-xs text-[color:var(--app-danger)]">
-              {k8sError}
-            </div>
-          )}
-          {!isLoadingK8s && !k8sError && kubernetesPods.length === 0 && (
-            <div className="px-3 py-2 text-xs app-text-muted italic">
-              No pods found
-            </div>
-          )}
-          {!isLoadingK8s && !k8sError && (
-            <>
-              {/* Render namespace groups as sub-menus */}
-              {Object.entries(groupedPods).map(([namespace, pods]) => (
-                <DropdownMenu.Sub key={namespace}>
-                  <DropdownMenu.SubTrigger className="px-3 py-2 text-sm app-text  app-hover outline-none cursor-pointer flex items-center gap-2">
-                    <Cloud size={16} />
-                    <span className="flex-1 truncate">{namespace}</span>
-                    <span className="text-xs app-text-muted">({pods.length})</span>
-                    <ChevronRight size={14} />
-                  </DropdownMenu.SubTrigger>
-                  <DropdownMenu.Portal>
-                    <DropdownMenu.SubContent className="min-w-[280px] app-surface-2 shadow-lg p-1 border app-border z-50 max-h-[400px] overflow-y-auto">
-                      {pods.map((pod) => renderPodItem(pod))}
-                    </DropdownMenu.SubContent>
-                  </DropdownMenu.Portal>
-                </DropdownMenu.Sub>
-              ))}
-            </>
-          )}
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+              {pods.map((pod) => renderPodItem(pod))}
+            </DropdownSub>
+          ))}
+        </>
+      )}
+    </Dropdown>
   );
 }

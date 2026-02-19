@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { Save, FolderOpen, AlertTriangle, CheckCircle, X } from 'lucide-react';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { invoke } from '@tauri-apps/api/core';
 import { useSessionManager } from '@/hooks/useSessionManager';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownSeparator,
+  DropdownStateMessage,
+} from './Dropdown/Dropdown';
 
 interface SaveSessionModalProps {
   isOpen: boolean;
@@ -268,70 +273,55 @@ export function SessionButton() {
 
   return (
     <>
-      <DropdownMenu.Root modal={false}>
-        <DropdownMenu.Trigger asChild>
-          <button
-            className="px-3 h-8 flex items-center justify-center app-hover transition-colors"
-            aria-label="Sessions"
-            type="button"
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <FolderOpen size={16} className="app-text" />
-          </button>
-        </DropdownMenu.Trigger>
+      <Dropdown
+        trigger={<FolderOpen size={16} className="app-text" />}
+        ariaLabel="Sessions"
+        minWidth={300}
+      >
+        <DropdownItem
+          onSelect={() => setIsSaveModalOpen(true)}
+          icon={<Save size={14} strokeWidth={2} />}
+        >
+          Save Current Session
+        </DropdownItem>
 
-        <DropdownMenu.Content className="min-w-[300px] app-surface-2 overflow-hidden p-[5px] shadow-lg border app-border z-50">
-          <DropdownMenu.Item
-            className="group text-[13px] leading-none app-text flex items-center h-[25px] px-[5px] relative pl-[25px] select-none outline-none cursor-default data-[highlighted]:bg-[color:var(--app-accent)] data-[highlighted]:text-[color:var(--app-text)]"
-            onSelect={() => setIsSaveModalOpen(true)}
-          >
-            Save Current Session
-            <div className="absolute left-[5px] app-text-muted">
-              <Save size={14} strokeWidth={2} />
-            </div>
-          </DropdownMenu.Item>
+        <DropdownSeparator />
 
-          <DropdownMenu.Separator className="h-px w-full my-1 bg-[color:var(--app-border)]" />
+        {savedSessions.length === 0 && (
+          <DropdownStateMessage type="empty" message="No saved sessions" />
+        )}
 
-          {savedSessions.length === 0 && (
-            <div className="text-center py-4 text-sm app-text-muted">
-              No saved sessions
-            </div>
-          )}
+        {savedSessions.length > 0 && (
+          <>
+            {savedSessions.map((session) => (
+              <div key={session.name} className="relative group">
+                <DropdownItem
+                  onSelect={() => handleLoadSession(session)}
+                  icon={<FolderOpen size={14} className="app-text-muted flex-shrink-0" strokeWidth={2} />}
+                  className="pr-8"
+                >
+                  <div className="truncate flex-1 min-w-0">{session.name}</div>
+                  <div className="text-[11px] app-text-muted flex-shrink-0">
+                    {new Date(session.created_at).toLocaleDateString()}
+                  </div>
+                </DropdownItem>
 
-          {savedSessions.length > 0 && (
-            <div className="max-h-[300px] overflow-y-auto">
-              {savedSessions.map((session) => (
-                <div key={session.name} className="relative group">
-                  <DropdownMenu.Item
-                    className="group flex items-center justify-between h-[25px] px-[5px] select-none outline-none cursor-default data-[highlighted]:bg-[color:var(--app-accent)] data-[highlighted]:text-[color:var(--app-text)] text-[13px]"
-                    onSelect={() => handleLoadSession(session)}
-                  >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <FolderOpen size={14} className="app-text-muted flex-shrink-0" strokeWidth={2} />
-                      <div className="truncate app-text">{session.name}</div>
-                      <div className="text-xs app-text-muted flex-shrink-0">
-                        {new Date(session.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </DropdownMenu.Item>
-
-                  <button
-                    className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 hover:text-[color:var(--app-danger)] app-text-muted transition-opacity p-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteSession(session);
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </DropdownMenu.Content>
-      </DropdownMenu.Root>
+                <button
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 hover:text-[color:var(--app-danger)] app-text-muted transition-opacity p-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteSession(session);
+                  }}
+                  type="button"
+                  aria-label={`Delete ${session.name}`}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </>
+        )}
+      </Dropdown>
 
       <SaveSessionModal
         isOpen={isSaveModalOpen}

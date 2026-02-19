@@ -100,4 +100,28 @@ body {
   .app-border-accent {
     border-color: var(--app-accent);
   }
+
+  /* Scrollbar utilities - only show scrollbar when content overflows */
+  .scrollbar-auto-hide {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--app-border) transparent;
+  }
+
+  .scrollbar-auto-hide::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scrollbar-auto-hide::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-auto-hide::-webkit-scrollbar-thumb {
+    background-color: var(--app-border);
+    border-radius: 4px;
+  }
+
+  .scrollbar-auto-hide::-webkit-scrollbar-thumb:hover {
+    background-color: var(--app-text-muted);
+  }
 }

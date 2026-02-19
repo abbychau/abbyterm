@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Plus, MonitorDot, ServerIcon } from 'lucide-react';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { invoke } from '@tauri-apps/api/core';
 import { useTabStore } from '@/store/tabStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownSeparator,
+  DropdownLabel,
+} from './Dropdown/Dropdown';
 
 interface SshHost {
   name: string;
@@ -18,7 +23,7 @@ export function NewTabButton() {
   const { addTab } = useTabStore();
   const settings = useSettingsStore((state) => state.settings);
   const [sshHosts, setSshHosts] = useState<SshHost[]>([]);
-  const [, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     loadSshHosts();
@@ -119,57 +124,36 @@ export function NewTabButton() {
   };
 
   return (
-    <DropdownMenu.Root modal={false} onOpenChange={setIsOpen}>
-      <DropdownMenu.Trigger asChild>
-        <button
-          className="px-3 h-8 flex items-center justify-center app-hover transition-colors"
-          aria-label="New connection"
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Plus size={16} className="app-text" />
-        </button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          className="min-w-[280px] app-surface-2 rounded-md shadow-lg p-1 border app-border z-50 max-h-[500px] overflow-y-auto"
-          align="start"
-          sideOffset={5}
-        >
-          <DropdownMenu.Item
-            className="px-3 py-2 text-sm app-text app-hover outline-none cursor-pointer flex items-center gap-2"
-            onSelect={handleNewLocalTab}
-          >
-            <MonitorDot size={16} />
-            Local Terminal
-          </DropdownMenu.Item>
+    <Dropdown
+      trigger={<Plus size={16} className="app-text" />}
+      isOpen={isOpen}
+      onOpenChange={setIsOpen}
+      ariaLabel="New connection"
+    >
+      <DropdownItem onSelect={handleNewLocalTab} icon={<MonitorDot size={16} />}>
+        Local Terminal
+      </DropdownItem>
 
-          {sshHosts.length > 0 && (
-            <>
-              <DropdownMenu.Separator className="h-px my-1 bg-[color:var(--app-border)]" />
-              <DropdownMenu.Label className="px-3 py-2 text-xs app-text-muted font-semibold">
-                SSH CONNECTIONS
-              </DropdownMenu.Label>
-              {sshHosts.map((host) => (
-                <DropdownMenu.Item
-                  key={host.name}
-                  className="px-3 py-2 text-sm app-text app-hover outline-none cursor-pointer flex items-center gap-2"
-                  onSelect={() => handleNewSshTab(host)}
-                >
-                  <ServerIcon size={16} />
-                  <div className="flex flex-col">
-                    <span>{host.name}</span>
-                    {host.hostname && host.hostname !== host.name && (
-                      <span className="text-xs app-text-muted">{host.hostname}</span>
-                    )}
-                  </div>
-                </DropdownMenu.Item>
-              ))}
-            </>
-          )}
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+      {sshHosts.length > 0 && (
+        <>
+          <DropdownSeparator />
+          <DropdownLabel>SSH CONNECTIONS</DropdownLabel>
+          {sshHosts.map((host) => (
+            <DropdownItem
+              key={host.name}
+              onSelect={() => handleNewSshTab(host)}
+              icon={<ServerIcon size={16} />}
+            >
+              <div className="flex flex-col">
+                <span>{host.name}</span>
+                {host.hostname && host.hostname !== host.name && (
+                  <span className="text-xs app-text-muted">{host.hostname}</span>
+                )}
+              </div>
+            </DropdownItem>
+          ))}
+        </>
+      )}
+    </Dropdown>
   );
 }

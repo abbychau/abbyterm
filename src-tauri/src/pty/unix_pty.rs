@@ -147,13 +147,36 @@ impl UnixPty {
                 shell_name.as_str(),
                 "bash" | "zsh" | "fish" | "ksh" | "mksh"
             );
-            command.arg("-i");
+            // Start as login shell first to load profile files
             if supports_login_flag {
                 command.arg("-l");
             }
+            // Then enable interactive mode
+            command.arg("-i");
         }
 
+        // Set TERM environment variable
         command.env("TERM", choose_term());
+
+        // Ensure HOME is set (needed for loading profile files)
+        if let Ok(home) = std::env::var("HOME") {
+            command.env("HOME", home);
+        }
+
+        // Build PATH with cargo bin directory if it exists
+        let mut path_entries = Vec::new();
+        if let Ok(home) = std::env::var("HOME") {
+            let cargo_bin = std::path::Path::new(&home).join(".cargo/bin");
+            if cargo_bin.exists() {
+                path_entries.push(cargo_bin.to_string_lossy().to_string());
+            }
+        }
+        if let Ok(path) = std::env::var("PATH") {
+            path_entries.push(path);
+        }
+        if !path_entries.is_empty() {
+            command.env("PATH", path_entries.join(":"));
+        }
 
         if let Some(dir) = cwd {
             command.current_dir(dir);
