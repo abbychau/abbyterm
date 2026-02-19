@@ -1,4 +1,6 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { invoke } from '@tauri-apps/api/core';
+import { useEffect, useState } from 'react';
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -6,6 +8,16 @@ interface AboutModalProps {
 }
 
 export function AboutModal({ isOpen, onClose }: AboutModalProps) {
+  const [buildDate, setBuildDate] = useState<string>('');
+
+  useEffect(() => {
+    if (isOpen) {
+      invoke<string>('get_build_date_short')
+        .then(setBuildDate)
+        .catch(() => setBuildDate('Unknown'));
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -31,8 +43,12 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
             </div>
           </div>
 
-          <p className="app-text mb-6 text-sm">
+          <p className="app-text mb-4 text-sm">
             AbbyTerm is a terminal emulator for Abby and you.
+          </p>
+
+          <p className="app-text-muted mb-6 text-sm">
+            Built: {buildDate}
           </p>
 
           <div className="flex gap-4">

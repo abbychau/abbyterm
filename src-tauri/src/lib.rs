@@ -9,6 +9,7 @@ use commands::window_commands::*;
 use commands::shell_commands::*;
 use commands::container_commands::*;
 use commands::session_commands::*;
+use commands::app_commands::*;
 use pty::manager::PtyManager;
 use std::sync::Mutex;
 use tauri::State;
@@ -78,6 +79,9 @@ pub fn run() {
             delete_session_snapshot,
             // CLI args
             get_initial_args,
+            // App commands
+            get_build_date,
+            get_build_date_short,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
