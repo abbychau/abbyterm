@@ -6,6 +6,7 @@ import { terminalPlugins } from '@/plugins/terminal/registry';
 export const defaultShortcuts: Shortcuts = {
   copy: 'Ctrl+Shift+C',
   paste: 'Ctrl+Shift+V',
+  selectAll: 'Ctrl+Shift+A',
   toggleFullscreen: 'F11',
   zoomIn: 'Ctrl+=',
   zoomOut: 'Ctrl+-',
@@ -14,7 +15,16 @@ export const defaultShortcuts: Shortcuts = {
   closeTab: 'Ctrl+W',
   nextTab: 'Ctrl+Tab',
   prevTab: 'Ctrl+Shift+Tab',
+  duplicateTab: 'Ctrl+Shift+D',
+  moveTabLeft: 'Ctrl+Shift+Left',
+  moveTabRight: 'Ctrl+Shift+Right',
   find: 'Ctrl+F',
+  findNext: 'Ctrl+G',
+  findPrevious: 'Ctrl+Shift+G',
+  clearTerminal: 'Ctrl+L',
+  scrollToTop: 'Ctrl+Home',
+  scrollToBottom: 'Ctrl+End',
+  openSettings: 'Ctrl+,',
 };
 
 const defaultSettings: Settings = {

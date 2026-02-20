@@ -177,7 +177,7 @@ export function TabContextMenu({ x, y, tabId, onClose }: TabContextMenuProps) {
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 w-48 app-surface-2 border app-border shadow-lg py-1 text-sm app-text"
+      className="fixed z-50 w-48 app-surface-2 border app-border shadow-lg py-1 text-sm app-text no-select"
       style={{ top: y, left: x }}
     >
       <button

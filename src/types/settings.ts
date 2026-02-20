@@ -49,6 +49,7 @@ export interface Settings {
 export interface Shortcuts {
   copy: string;
   paste: string;
+  selectAll: string;
   toggleFullscreen: string;
   zoomIn: string;
   zoomOut: string;
@@ -57,7 +58,16 @@ export interface Shortcuts {
   closeTab: string;
   nextTab: string;
   prevTab: string;
+  duplicateTab: string;
+  moveTabLeft: string;
+  moveTabRight: string;
   find: string;
+  findNext: string;
+  findPrevious: string;
+  clearTerminal: string;
+  scrollToTop: string;
+  scrollToBottom: string;
+  openSettings: string;
 }
 
 export interface SettingsStore {

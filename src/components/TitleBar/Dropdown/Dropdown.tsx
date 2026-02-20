@@ -8,7 +8,7 @@ import { ReactNode, MouseEvent } from 'react';
 
 const TRIGGER_CLASSES = 'px-3 h-8 flex items-center justify-center app-hover transition-colors';
 
-const CONTENT_CLASSES = 'app-surface-2 shadow-lg border app-border z-50';
+const CONTENT_CLASSES = 'app-surface-2 shadow-lg border app-border z-50 no-select';
 
 const CONTENT_BASE = 'rounded-md p-1 max-h-[500px] overflow-y-auto';
 
@@ -18,7 +18,7 @@ const LABEL_CLASSES = 'text-xs app-text-muted font-semibold px-3 py-2';
 
 const SEPARATOR_CLASSES = 'h-px my-1 bg-[color:var(--app-border)]';
 
-const SUB_CONTENT_CLASSES = 'app-surface-2 rounded-md shadow-lg p-1 border app-border z-50 max-h-[400px] overflow-y-auto';
+const SUB_CONTENT_CLASSES = 'app-surface-2 rounded-md shadow-lg p-1 border app-border z-50 max-h-[400px] overflow-y-auto no-select';
 
 const SUB_TRIGGER_CLASSES = 'px-3 py-2 text-xs app-text app-hover outline-none cursor-pointer flex items-center gap-2';
 

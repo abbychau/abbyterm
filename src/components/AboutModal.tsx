@@ -22,7 +22,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="app-surface-2 app-text shadow-2xl w-80 border app-border" onClick={e => e.stopPropagation()}>
+      <div className="app-surface-2 app-text shadow-2xl w-80 border app-border no-select" onClick={e => e.stopPropagation()}>
         {/* Header with close button */}
         <div className="flex items-start justify-end p-3 pb-0">
           <button

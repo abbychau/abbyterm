@@ -35,14 +35,24 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     });
   };
 
-  const renderShortcutRow = (label: string, id: keyof Shortcuts) => (
-    <div className="flex items-center justify-between">
-      <span className="app-text text-xs">{label}</span>
-      <div className="flex items-center gap-2">
+  const renderShortcutRow = (category: string, label: string, id: keyof Shortcuts, description?: string) => (
+    <tr className="border-b app-border hover:app-hover transition-colors">
+      <td className="py-2 px-3 app-text-muted text-xs">{category}</td>
+      <td className="py-2 px-3">
+        <div className="flex flex-col">
+          <span className="app-text text-xs font-medium">{label}</span>
+          {description && (
+            <span className="app-text-muted text-[10px] mt-0.5">{description}</span>
+          )}
+        </div>
+      </td>
+      <td className="py-2 px-3">
         <ShortcutRecorder
           value={settings.shortcuts[id]}
           onChange={(val) => updateShortcut(id, val)}
         />
+      </td>
+      <td className="py-2 px-3 text-center w-12">
         <button
           onClick={() => updateShortcut(id, defaultShortcuts[id])}
           className={`p-1 transition-colors ${
@@ -54,15 +64,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         >
           <RotateCcw size={12} />
         </button>
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="app-surface-2 app-text border app-border shadow-2xl w-full max-w-[1024px] h-full max-h-[768px] flex flex-col text-xs">
+      <div className="app-surface-2 app-text border app-border shadow-2xl w-full max-w-[1024px] h-full max-h-[768px] flex flex-col text-xs no-select">
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b app-border">
           <h2 className="text-sm font-semibold">Settings</h2>
@@ -347,24 +357,49 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             )}
 
             {activeTab === 'shortcuts' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                  <h3 className="col-span-2 text-sm font-medium mb-1 text-[color:var(--app-accent)]">Terminal</h3>
+              <div>
+                <table className="w-full border app-border">
+                  <thead className="app-surface-2 sticky top-0">
+                    <tr className="border-b app-border">
+                      <th className="py-2 px-3 text-left text-xs font-semibold app-text">Category</th>
+                      <th className="py-2 px-3 text-left text-xs font-semibold app-text">Action</th>
+                      <th className="py-2 px-3 text-left text-xs font-semibold app-text">Shortcut</th>
+                      <th className="py-2 px-3 text-center text-xs font-semibold app-text w-12">Reset</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Terminal */}
+                    {renderShortcutRow('Terminal', 'Copy', 'copy', 'Copy selected text to clipboard')}
+                    {renderShortcutRow('Terminal', 'Paste', 'paste', 'Paste from clipboard')}
+                    {renderShortcutRow('Terminal', 'Select All', 'selectAll', 'Select all text in terminal')}
+                    {renderShortcutRow('Terminal', 'Clear Terminal', 'clearTerminal', 'Clear the terminal screen')}
+                    {renderShortcutRow('Terminal', 'Scroll to Top', 'scrollToTop', 'Jump to beginning of scrollback')}
+                    {renderShortcutRow('Terminal', 'Scroll to Bottom', 'scrollToBottom', 'Jump to end of scrollback')}
 
-                  {renderShortcutRow('Copy', 'copy')}
-                  {renderShortcutRow('Paste', 'paste')}
-                  {renderShortcutRow('Zoom In', 'zoomIn')}
-                  {renderShortcutRow('Zoom Out', 'zoomOut')}
-                  {renderShortcutRow('Reset Zoom', 'zoomReset')}
+                    {/* View */}
+                    {renderShortcutRow('View', 'Zoom In', 'zoomIn', 'Increase font size')}
+                    {renderShortcutRow('View', 'Zoom Out', 'zoomOut', 'Decrease font size')}
+                    {renderShortcutRow('View', 'Reset Zoom', 'zoomReset', 'Reset to default font size')}
+                    {renderShortcutRow('View', 'Toggle Fullscreen', 'toggleFullscreen', 'Enter/exit fullscreen mode')}
 
-                  <h3 className="col-span-2 text-sm font-medium mb-1 mt-2 text-[color:var(--app-accent)]">Window & Tabs</h3>
+                    {/* Tabs */}
+                    {renderShortcutRow('Tabs', 'New Tab', 'newTab', 'Create a new terminal tab')}
+                    {renderShortcutRow('Tabs', 'Close Tab', 'closeTab', 'Close the current tab')}
+                    {renderShortcutRow('Tabs', 'Duplicate Tab', 'duplicateTab', 'Duplicate the current tab')}
+                    {renderShortcutRow('Tabs', 'Next Tab', 'nextTab', 'Switch to next tab')}
+                    {renderShortcutRow('Tabs', 'Previous Tab', 'prevTab', 'Switch to previous tab')}
+                    {renderShortcutRow('Tabs', 'Move Tab Left', 'moveTabLeft', 'Move current tab left')}
+                    {renderShortcutRow('Tabs', 'Move Tab Right', 'moveTabRight', 'Move current tab right')}
 
-                  {renderShortcutRow('Toggle Fullscreen', 'toggleFullscreen')}
-                  {renderShortcutRow('New Tab', 'newTab')}
-                  {renderShortcutRow('Close Tab', 'closeTab')}
-                  {renderShortcutRow('Next Tab', 'nextTab')}
-                  {renderShortcutRow('Previous Tab', 'prevTab')}
-                </div>
+                    {/* Search */}
+                    {renderShortcutRow('Search', 'Find', 'find', 'Open search dialog')}
+                    {renderShortcutRow('Search', 'Find Next', 'findNext', 'Jump to next search result')}
+                    {renderShortcutRow('Search', 'Find Previous', 'findPrevious', 'Jump to previous search result')}
+
+                    {/* Application */}
+                    {renderShortcutRow('Application', 'Open Settings', 'openSettings', 'Open settings panel')}
+                  </tbody>
+                </table>
               </div>
             )}
 

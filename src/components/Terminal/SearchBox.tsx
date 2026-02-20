@@ -62,7 +62,7 @@ export function SearchBox({ searchAddon, onClose }: SearchBoxProps) {
   };
 
   return (
-    <div className="absolute top-2 right-2 z-10 flex items-center gap-1 border app-border app-surface-2 p-1 shadow-lg app-text">
+    <div className="absolute top-2 right-2 z-10 flex items-center gap-1 border app-border app-surface-2 p-1 shadow-lg app-text no-select">
       <input
         ref={inputRef}
         type="text"
