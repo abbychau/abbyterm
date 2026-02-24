@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Cloud, ServerIcon } from 'lucide-react';
+import { Cloud, ServerIcon, Check } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTabStore } from '@/store/tabStore';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,12 +19,23 @@ interface KubernetesPod {
   ready: string;
 }
 
+interface KubernetesContext {
+  name: string;
+  cluster: string;
+  user: string;
+  namespace: string | null;
+  is_current: boolean;
+}
+
 export function K8sButton() {
   const { addTab } = useTabStore();
   const settings = useSettingsStore((state) => state.settings);
   const [kubernetesPods, setKubernetesPods] = useState<KubernetesPod[]>([]);
+  const [kubernetesContexts, setKubernetesContexts] = useState<KubernetesContext[]>([]);
   const [isLoadingK8s, setIsLoadingK8s] = useState(false);
+  const [isLoadingContexts, setIsLoadingContexts] = useState(false);
   const [k8sError, setK8sError] = useState<string | null>(null);
+  const [contextError, setContextError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   const getKubectlExecutable = () => {
@@ -34,12 +45,31 @@ export function K8sButton() {
     return `'${p.replace(/'/g, `'"'"'`)}'`;
   };
 
-  // Load pods when dropdown opens
+  // Load contexts and pods when dropdown opens
   useEffect(() => {
     if (isOpen) {
+      loadKubernetesContexts();
       loadKubernetesPods();
     }
   }, [isOpen]);
+
+  const loadKubernetesContexts = async () => {
+    setIsLoadingContexts(true);
+    setContextError(null);
+    try {
+      const contexts = await invoke<KubernetesContext[]>('get_kubernetes_contexts', {
+        kubectlPath: settings.kubectlExecutablePath || null,
+      });
+      console.log('Kubernetes contexts loaded:', contexts);
+      setKubernetesContexts(contexts);
+    } catch (err) {
+      console.error('Failed to load Kubernetes contexts:', err);
+      setContextError('Failed to load contexts');
+      setKubernetesContexts([]);
+    } finally {
+      setIsLoadingContexts(false);
+    }
+  };
 
   const loadKubernetesPods = async () => {
     setIsLoadingK8s(true);
@@ -76,6 +106,21 @@ export function K8sButton() {
       setKubernetesPods([]);
     } finally {
       setIsLoadingK8s(false);
+    }
+  };
+
+  const handleSwitchContext = async (contextName: string) => {
+    try {
+      await invoke('set_kubernetes_context', {
+        kubectlPath: settings.kubectlExecutablePath || null,
+        contextName,
+      });
+      // Reload both contexts and pods after switching
+      await loadKubernetesContexts();
+      await loadKubernetesPods();
+    } catch (err) {
+      console.error('Failed to switch context:', err);
+      alert('Failed to switch context: ' + err);
     }
   };
 
@@ -152,13 +197,51 @@ export function K8sButton() {
       trigger={<Cloud size={16} className="app-text" />}
       isOpen={isOpen}
       onOpenChange={setIsOpen}
-      ariaLabel="Kubernetes pods"
+      ariaLabel="Kubernetes"
     >
       <DropdownHeader
         label="KUBERNETES PODS"
         onRefresh={loadKubernetesPods}
         isRefreshing={isLoadingK8s}
       />
+
+      {/* Contexts Submenu */}
+      <DropdownSub
+        triggerIcon={<Cloud size={16} />}
+        triggerLabel="Contexts"
+        triggerCount={kubernetesContexts.length}
+      >
+        {isLoadingContexts && <DropdownStateMessage type="loading" message="Loading..." />}
+
+        {!isLoadingContexts && contextError && (
+          <DropdownStateMessage type="error" message={contextError} />
+        )}
+
+        {!isLoadingContexts && !contextError && kubernetesContexts.length === 0 && (
+          <DropdownStateMessage type="empty" message="No contexts found" />
+        )}
+
+        {!isLoadingContexts && !contextError && kubernetesContexts.length > 0 && (
+          <>
+            {kubernetesContexts.map((context) => (
+              <DropdownItem
+                key={context.name}
+                onSelect={() => handleSwitchContext(context.name)}
+                icon={context.is_current ? <Check size={16} className="text-[color:var(--app-accent)]" /> : <div className="w-4" />}
+                className={context.is_current ? 'bg-[color:var(--app-hover)]' : ''}
+              >
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="truncate font-medium">{context.name}</span>
+                  <span className="text-xs app-text-muted truncate">
+                    {context.cluster}
+                    {context.namespace && ` • ${context.namespace}`}
+                  </span>
+                </div>
+              </DropdownItem>
+            ))}
+          </>
+        )}
+      </DropdownSub>
 
       {isLoadingK8s && <DropdownStateMessage type="loading" />}
 

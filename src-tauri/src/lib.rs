@@ -71,6 +71,8 @@ pub fn run() {
             // Container commands
             get_docker_containers,
             get_kubernetes_pods,
+            get_kubernetes_contexts,
+            set_kubernetes_context,
             check_kubectl_available,
             check_docker_available,
             // Session commands

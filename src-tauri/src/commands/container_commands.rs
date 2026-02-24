@@ -19,6 +19,15 @@ pub struct KubernetesPod {
     pub ready: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KubernetesContext {
+    pub name: String,
+    pub cluster: String,
+    pub user: String,
+    pub namespace: Option<String>,
+    pub is_current: bool,
+}
+
 fn find_command(cmd: &str) -> String {
     // Common locations for kubectl and docker
     let common_paths = vec![
@@ -218,4 +227,125 @@ pub async fn get_kubernetes_pods(kubectl_path: Option<String>) -> Result<Vec<Kub
         .collect();
 
     Ok(pods)
+}
+
+#[tauri::command]
+pub async fn get_kubernetes_contexts(kubectl_path: Option<String>) -> Result<Vec<KubernetesContext>, String> {
+    let kubectl_cmd = resolve_command("kubectl", kubectl_path);
+
+    // Get current context
+    let current_context = match timeout(
+        Duration::from_secs(3),
+        tokio::process::Command::new(&kubectl_cmd)
+            .arg("config")
+            .arg("current-context")
+            .output()
+    )
+    .await
+    {
+        Ok(Ok(output)) if output.status.success() => {
+            String::from_utf8(output.stdout)
+                .ok()
+                .map(|s| s.trim().to_string())
+        }
+        _ => None,
+    };
+
+    // Get all contexts
+    let output = timeout(
+        Duration::from_secs(10),
+        tokio::process::Command::new(&kubectl_cmd)
+            .arg("config")
+            .arg("get-contexts")
+            .arg("-o")
+            .arg("name")
+            .output()
+    )
+    .await
+    .map_err(|_| "Kubectl command timed out".to_string())?
+    .map_err(|e| format!("Failed to execute kubectl ({}): {}", kubectl_cmd, e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Kubectl command failed: {}", stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let context_names: Vec<String> = stdout
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| line.trim().to_string())
+        .collect();
+
+    // Get detailed info for each context
+    let mut contexts = Vec::new();
+    for name in context_names {
+        let is_current = current_context.as_ref().map_or(false, |c| c == &name);
+
+        // Get context details
+        let details_output = timeout(
+            Duration::from_secs(3),
+            tokio::process::Command::new(&kubectl_cmd)
+                .arg("config")
+                .arg("view")
+                .arg("-o")
+                .arg(format!("jsonpath={{.contexts[?(@.name==\"{}\")]}}{{\"\\n\"}}", name))
+                .output()
+        )
+        .await;
+
+        let (cluster, user, namespace) = match details_output {
+            Ok(Ok(output)) if output.status.success() => {
+                let json_str = String::from_utf8_lossy(&output.stdout);
+                // Parse basic info from the JSON output
+                let cluster = json_str.split("\"cluster\":\"").nth(1)
+                    .and_then(|s| s.split("\"").next())
+                    .unwrap_or("")
+                    .to_string();
+                let user = json_str.split("\"user\":\"").nth(1)
+                    .and_then(|s| s.split("\"").next())
+                    .unwrap_or("")
+                    .to_string();
+                let namespace = json_str.split("\"namespace\":\"").nth(1)
+                    .and_then(|s| s.split("\"").next())
+                    .map(|s| s.to_string());
+                (cluster, user, namespace)
+            }
+            _ => (String::new(), String::new(), None),
+        };
+
+        contexts.push(KubernetesContext {
+            name,
+            cluster,
+            user,
+            namespace,
+            is_current,
+        });
+    }
+
+    Ok(contexts)
+}
+
+#[tauri::command]
+pub async fn set_kubernetes_context(kubectl_path: Option<String>, context_name: String) -> Result<(), String> {
+    let kubectl_cmd = resolve_command("kubectl", kubectl_path);
+
+    let output = timeout(
+        Duration::from_secs(10),
+        tokio::process::Command::new(&kubectl_cmd)
+            .arg("config")
+            .arg("use-context")
+            .arg(&context_name)
+            .output()
+    )
+    .await
+    .map_err(|_| "Kubectl command timed out".to_string())?
+    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to switch context: {}", stderr));
+    }
+
+    Ok(())
 }
