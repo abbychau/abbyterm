@@ -177,11 +177,11 @@ export function TabContextMenu({ x, y, tabId, onClose }: TabContextMenuProps) {
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 w-48 app-surface-2 border app-border shadow-lg py-1 text-sm app-text no-select"
+      className="fixed z-50 min-w-[200px] app-surface-2 border app-border shadow-lg rounded-md p-1 text-xs app-text no-select"
       style={{ top: y, left: x }}
     >
       <button
-        className={`w-full text-left px-4 py-2 transition-colors ${
+        className={`w-full text-left px-3 py-2 transition-colors outline-none cursor-pointer flex items-center gap-2 ${
           copyStatus === 'success'
             ? 'app-bg-success app-hover-success'
             : copyStatus === 'error'
@@ -193,21 +193,21 @@ export function TabContextMenu({ x, y, tabId, onClose }: TabContextMenuProps) {
       >
         {getCopyButtonText()}
       </button>
-      <div className="h-px my-1 app-border" />
+      <div className="h-px my-1 bg-[color:var(--app-border)]" />
       <button
-        className="w-full text-left px-4 py-2 app-hover transition-colors"
+        className="w-full text-left px-3 py-2 app-hover transition-colors outline-none cursor-pointer flex items-center gap-2"
         onClick={handleClose}
       >
         Close
       </button>
       <button
-        className="w-full text-left px-4 py-2 app-hover transition-colors"
+        className="w-full text-left px-3 py-2 app-hover transition-colors outline-none cursor-pointer flex items-center gap-2"
         onClick={handleCloseOthers}
       >
         Close Others
       </button>
       <button
-        className="w-full text-left px-4 py-2 app-hover transition-colors"
+        className="w-full text-left px-3 py-2 app-hover transition-colors outline-none cursor-pointer flex items-center gap-2"
         onClick={handleCloseToRight}
       >
         Close to the Right
