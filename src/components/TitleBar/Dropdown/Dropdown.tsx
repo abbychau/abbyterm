@@ -178,6 +178,7 @@ interface DropdownSubProps {
   triggerLabel?: string;
   triggerCount?: number;
   children: ReactNode;
+  onAuxClick?: () => void;
 }
 
 /**
@@ -189,10 +190,23 @@ export function DropdownSub({
   triggerLabel,
   triggerCount,
   children,
+  onAuxClick,
 }: DropdownSubProps) {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Middle mouse button
+    if (e.button === 1 && onAuxClick) {
+      e.preventDefault();
+      e.stopPropagation();
+      onAuxClick();
+    }
+  };
+
   return (
     <DropdownMenu.Sub>
-      <DropdownMenu.SubTrigger className={SUB_TRIGGER_CLASSES}>
+      <DropdownMenu.SubTrigger
+        className={SUB_TRIGGER_CLASSES}
+        onMouseDown={handleMouseDown}
+      >
         {triggerIcon}
         {triggerLabel && <span className="flex-1 truncate">{triggerLabel}</span>}
         {triggerCount && <span className="text-xs app-text-muted">({triggerCount})</span>}

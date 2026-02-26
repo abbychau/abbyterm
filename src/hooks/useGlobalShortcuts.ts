@@ -13,7 +13,7 @@ export function useGlobalShortcuts() {
     const handleKeyDown = async (e: KeyboardEvent) => {
       // Ignore if input or textarea is focused (except for xterm)
       if (
-        (document.activeElement instanceof HTMLInputElement || 
+        (document.activeElement instanceof HTMLInputElement ||
          document.activeElement instanceof HTMLTextAreaElement) &&
         !document.activeElement.classList.contains('xterm-helper-textarea')
       ) {
@@ -25,7 +25,7 @@ export function useGlobalShortcuts() {
       if (e.shiftKey) modifiers.push('Shift');
       if (e.altKey) modifiers.push('Alt');
       if (e.metaKey) modifiers.push('Meta');
-      
+
       let key = e.key;
       if (key === ' ') key = 'Space';
       if (key.length === 1) key = key.toUpperCase();
@@ -52,22 +52,22 @@ export function useGlobalShortcuts() {
         try {
           const tabId = uuidv4();
           const sessionId = await invoke<string>('create_pty_session', {
-            shell: settings.shell || null,
+            shell: null,
             args: null,
-            cwd: null,
+            cwd: settings.defaultCwd || null,
             cols: 80,
             rows: 24,
           });
           addTab({
             id: tabId,
-            title: 'Terminal',
+            title: 'Local',
             sessionId,
             type: 'local',
             rootPane: {
               type: 'terminal',
               id: tabId,
               sessionId,
-              title: 'Terminal',
+              title: 'Local',
               tabType: 'local',
             },
           });

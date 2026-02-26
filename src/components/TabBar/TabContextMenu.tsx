@@ -1,36 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { useTabStore } from '@/store/tabStore';
 import { invoke } from '@tauri-apps/api/core';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import {
+  ContextMenuRoot,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from '@/components/Shared/ContextMenu';
 
 interface TabContextMenuProps {
-  x: number;
-  y: number;
   tabId: string;
-  onClose: () => void;
+  children: ReactNode;
 }
 
-export function TabContextMenu({ x, y, tabId, onClose }: TabContextMenuProps) {
+export function TabContextMenu({ tabId, children }: TabContextMenuProps) {
   const { tabs, removeTab } = useTabStore();
-  const menuRef = useRef<HTMLDivElement>(null);
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'success' | 'error'>('idle');
 
   const currentTab = tabs.find((t) => t.id === tabId);
   const isDocker = currentTab?.title.startsWith('Docker:');
   const isK8s = currentTab?.title.startsWith('K8s:');
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [onClose]);
 
   const handleClose = async () => {
     const currentTab = tabs.find((t) => t.id === tabId);
@@ -54,7 +45,6 @@ export function TabContextMenu({ x, y, tabId, onClose }: TabContextMenuProps) {
       }
     }
     removeTab(tabId);
-    onClose();
   };
 
   const handleCloseOthers = async () => {
@@ -79,7 +69,6 @@ export function TabContextMenu({ x, y, tabId, onClose }: TabContextMenuProps) {
       }
       removeTab(tab.id);
     }
-    onClose();
   };
 
   const handleCloseToRight = async () => {
@@ -107,7 +96,6 @@ export function TabContextMenu({ x, y, tabId, onClose }: TabContextMenuProps) {
       }
       removeTab(tab.id);
     }
-    onClose();
   };
 
   const handleCopyWorkingDirectory = async () => {
@@ -150,7 +138,6 @@ export function TabContextMenu({ x, y, tabId, onClose }: TabContextMenuProps) {
       // Reset status after 1.5 seconds
       setTimeout(() => {
         setCopyStatus('idle');
-        onClose();
       }, 1500);
     } catch (err) {
       console.error('Failed to copy:', err);
@@ -175,43 +162,25 @@ export function TabContextMenu({ x, y, tabId, onClose }: TabContextMenuProps) {
   };
 
   return (
-    <div
-      ref={menuRef}
-      className="fixed z-50 min-w-[200px] app-surface-2 border app-border shadow-lg rounded-md p-1 text-xs app-text no-select"
-      style={{ top: y, left: x }}
-    >
-      <button
-        className={`w-full text-left px-3 py-2 transition-colors outline-none cursor-pointer flex items-center gap-2 ${
-          copyStatus === 'success'
-            ? 'app-bg-success app-hover-success'
-            : copyStatus === 'error'
-            ? 'app-bg-danger app-hover-danger'
-            : 'app-hover'
-        }`}
-        onClick={handleCopyWorkingDirectory}
-        disabled={copyStatus === 'copying'}
-      >
-        {getCopyButtonText()}
-      </button>
-      <div className="h-px my-1 bg-[color:var(--app-border)]" />
-      <button
-        className="w-full text-left px-3 py-2 app-hover transition-colors outline-none cursor-pointer flex items-center gap-2"
-        onClick={handleClose}
-      >
-        Close
-      </button>
-      <button
-        className="w-full text-left px-3 py-2 app-hover transition-colors outline-none cursor-pointer flex items-center gap-2"
-        onClick={handleCloseOthers}
-      >
-        Close Others
-      </button>
-      <button
-        className="w-full text-left px-3 py-2 app-hover transition-colors outline-none cursor-pointer flex items-center gap-2"
-        onClick={handleCloseToRight}
-      >
-        Close to the Right
-      </button>
-    </div>
+    <ContextMenuRoot>
+      <ContextMenuTrigger className="block">
+        {children}
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onSelect={handleCopyWorkingDirectory} disabled={copyStatus === 'copying'}>
+          {getCopyButtonText()}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onSelect={handleClose}>
+          Close
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={handleCloseOthers}>
+          Close Others
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={handleCloseToRight}>
+          Close to the Right
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenuRoot>
   );
 }

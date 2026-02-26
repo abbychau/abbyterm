@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useTabStore } from '@/store/tabStore';
 import { invoke } from '@tauri-apps/api/core';
@@ -12,7 +11,6 @@ interface TabProps {
 
 export function Tab({ id, title, isActive }: TabProps) {
   const { setActiveTab, removeTab } = useTabStore();
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const handleClose = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -47,13 +45,8 @@ export function Tab({ id, title, isActive }: TabProps) {
     removeTab(id);
   };
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY });
-  };
-
   return (
-    <>
+    <TabContextMenu tabId={id}>
       <div
         className={`
           h-9 px-3 flex items-center gap-2 cursor-pointer border-r app-border min-w-[120px] max-w-[300px] select-none
@@ -64,7 +57,6 @@ export function Tab({ id, title, isActive }: TabProps) {
           }
         `}
         onClick={() => setActiveTab(id)}
-        onContextMenu={handleContextMenu}
         title={title}
       >
         <span className="text-sm truncate flex-1">{title}</span>
@@ -76,14 +68,6 @@ export function Tab({ id, title, isActive }: TabProps) {
           <X size={14} />
         </button>
       </div>
-      {contextMenu && (
-        <TabContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          tabId={id}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
-    </>
+    </TabContextMenu>
   );
 }

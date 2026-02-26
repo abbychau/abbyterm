@@ -1,8 +1,14 @@
-import * as ContextMenu from '@radix-ui/react-context-menu';
 import { ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { tabStore } from '@/store/tabStore';
 import { Rows, Columns } from 'lucide-react';
+import {
+  ContextMenuRoot,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from '@/components/Shared/ContextMenu';
 
 interface TerminalContextMenuProps {
   children: ReactNode;
@@ -97,82 +103,48 @@ export function TerminalContextMenu({
   };
 
   return (
-    <ContextMenu.Root>
-      <ContextMenu.Trigger className="w-full h-full block">
+    <ContextMenuRoot>
+      <ContextMenuTrigger>
         {children}
-      </ContextMenu.Trigger>
-      <ContextMenu.Portal>
-        <ContextMenu.Content 
-          className="min-w-[220px] app-surface-2 overflow-hidden p-[5px] shadow-[0px_10px_38px_-10px_rgba(22,_23,_24,_0.35),_0px_10px_20px_-15px_rgba(22,_23,_24,_0.2)] border app-border z-[9999]"
-        >
-          <ContextMenu.Item 
-            className="group text-[13px] leading-none app-text flex items-center h-[25px] px-[5px] relative pl-[25px] select-none outline-none cursor-default data-[highlighted]:bg-[color:var(--app-accent)] data-[highlighted]:text-[color:var(--app-text)]"
-            onSelect={onCopy}
-          >
-            Copy
-            <div className="ml-auto pl-[20px] app-text-muted group-data-[highlighted]:text-[color:var(--app-text)] text-[11px]">
-              Ctrl+Shift+C
-            </div>
-          </ContextMenu.Item>
-          <ContextMenu.Item 
-            className="group text-[13px] leading-none app-text flex items-center h-[25px] px-[5px] relative pl-[25px] select-none outline-none cursor-default data-[highlighted]:bg-[color:var(--app-accent)] data-[highlighted]:text-[color:var(--app-text)]"
-            onSelect={onPaste}
-          >
-            Paste
-            <div className="ml-auto pl-[20px] app-text-muted group-data-[highlighted]:text-[color:var(--app-text)] text-[11px]">
-              Ctrl+Shift+V
-            </div>
-          </ContextMenu.Item>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onSelect={onCopy} shortcut="Ctrl+Shift+C">
+          Copy
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={onPaste} shortcut="Ctrl+Shift+V">
+          Paste
+        </ContextMenuItem>
 
-          <ContextMenu.Separator className="h-px w-full my-1 bg-[color:var(--app-border)]" />
+        <ContextMenuSeparator />
 
-          {tabId && paneId && (
-            <>
-              <ContextMenu.Item
-                className="group text-[13px] leading-none app-text flex items-center h-[25px] px-[5px] relative pl-[25px] select-none outline-none cursor-default data-[highlighted]:bg-[color:var(--app-accent)] data-[highlighted]:text-[color:var(--app-text)]"
-                onSelect={() => splitPane('vertical')}
-              >
-                Split Vertically
-                <div className="absolute left-[5px] app-text-muted group-data-[highlighted]:text-[color:var(--app-text)]">
-                  <Rows size={14} strokeWidth={2} />
-                </div>
-              </ContextMenu.Item>
-              <ContextMenu.Item
-                className="group text-[13px] leading-none app-text flex items-center h-[25px] px-[5px] relative pl-[25px] select-none outline-none cursor-default data-[highlighted]:bg-[color:var(--app-accent)] data-[highlighted]:text-[color:var(--app-text)]"
-                onSelect={() => splitPane('horizontal')}
-              >
-                Split Horizontally
-                <div className="absolute left-[5px] app-text-muted group-data-[highlighted]:text-[color:var(--app-text)]">
-                  <Columns size={14} strokeWidth={2} />
-                </div>
-              </ContextMenu.Item>
-              <ContextMenu.Item
-                className="group text-[13px] leading-none app-text flex items-center h-[25px] px-[5px] relative pl-[25px] select-none outline-none cursor-default data-[highlighted]:bg-[color:var(--app-danger)] data-[highlighted]:text-[color:var(--app-on-danger)]"
-                onSelect={handleClosePane}
-              >
-                Close Pane
-              </ContextMenu.Item>
-              <ContextMenu.Separator className="h-px w-full my-1 bg-[color:var(--app-border)]" />
-            </>
-          )}
+        {tabId && paneId && (
+          <>
+            <ContextMenuItem
+              onSelect={() => splitPane('vertical')}
+              icon={<Rows size={14} strokeWidth={2} />}
+            >
+              Split Vertically
+            </ContextMenuItem>
+            <ContextMenuItem
+              onSelect={() => splitPane('horizontal')}
+              icon={<Columns size={14} strokeWidth={2} />}
+            >
+              Split Horizontally
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={handleClosePane} danger>
+              Close Pane
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        )}
 
-          <ContextMenu.Item 
-            className="group text-[13px] leading-none app-text flex items-center h-[25px] px-[5px] relative pl-[25px] select-none outline-none cursor-default data-[highlighted]:bg-[color:var(--app-accent)] data-[highlighted]:text-[color:var(--app-text)]"
-            onSelect={onSelectAll}
-          >
-            Select All
-          </ContextMenu.Item>
-          <ContextMenu.Item 
-            className="group text-[13px] leading-none app-text flex items-center h-[25px] px-[5px] relative pl-[25px] select-none outline-none cursor-default data-[highlighted]:bg-[color:var(--app-accent)] data-[highlighted]:text-[color:var(--app-text)]"
-            onSelect={onClear}
-          >
-            Clear Terminal
-            <div className="ml-auto pl-[20px] app-text-muted group-data-[highlighted]:text-[color:var(--app-text)] text-[11px]">
-              Ctrl+L
-            </div>
-          </ContextMenu.Item>
-        </ContextMenu.Content>
-      </ContextMenu.Portal>
-    </ContextMenu.Root>
+        <ContextMenuItem onSelect={onSelectAll}>
+          Select All
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={onClear} shortcut="Ctrl+L">
+          Clear Terminal
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenuRoot>
   );
 }
