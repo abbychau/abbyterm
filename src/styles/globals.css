@@ -134,7 +134,7 @@ body {
     cursor: default;
   }
 
-  .no-select input,
+  .no-select input:not([type="range"]),
   .no-select textarea,
   .no-select [contenteditable="true"] {
     user-select: text;
@@ -142,5 +142,9 @@ body {
     -moz-user-select: text;
     -ms-user-select: text;
     cursor: text;
+  }
+
+  .no-select input[type="range"] {
+    cursor: pointer;
   }
 }

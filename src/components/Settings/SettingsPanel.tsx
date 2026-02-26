@@ -232,7 +232,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     max="24"
                     value={settings.fontSize}
                     onChange={(e) => updateSettings({ fontSize: parseInt(e.target.value) })}
-                    className="w-full"
+                    className="w-full cursor-pointer"
                   />
                 </div>
 
@@ -309,7 +309,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     step="1000"
                     value={settings.scrollback}
                     onChange={(e) => updateSettings({ scrollback: parseInt(e.target.value) })}
-                    className="w-full"
+                    className="w-full cursor-pointer"
                   />
                 </div>
 
