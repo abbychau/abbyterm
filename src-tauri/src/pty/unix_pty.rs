@@ -9,10 +9,18 @@ use std::process::{Child, Command};
 
 fn terminfo_entry_exists(term: &str) -> bool {
     let first = term.chars().next().unwrap_or('x');
-    let subdir = if first.is_ascii_alphanumeric() {
-        first.to_ascii_lowercase().to_string()
+
+    // Different systems use different subdirectory schemes:
+    // - Linux typically uses the first letter (lowercase) for alphanumeric, hex for others
+    // - macOS uses hex encoding for all characters
+    let subdirs = if first.is_ascii_alphanumeric() {
+        // Check both letter-based and hex-based subdirectories
+        vec![
+            first.to_ascii_lowercase().to_string(),
+            format!("{:x}", first as u32),
+        ]
     } else {
-        format!("{:x}", first as u32)
+        vec![format!("{:x}", first as u32)]
     };
 
     let mut search_dirs: Vec<PathBuf> = Vec::new();
@@ -39,8 +47,13 @@ fn terminfo_entry_exists(term: &str) -> bool {
     search_dirs.push(PathBuf::from("/etc/terminfo"));
     search_dirs.push(PathBuf::from("/usr/share/lib/terminfo"));
 
-    let rel_path = Path::new(&subdir).join(term);
-    search_dirs.into_iter().any(|dir| dir.join(&rel_path).exists())
+    // Check all combinations of search directories and subdirectory schemes
+    search_dirs.into_iter().any(|dir| {
+        subdirs.iter().any(|subdir| {
+            let path = dir.join(subdir).join(term);
+            path.exists()
+        })
+    })
 }
 
 fn choose_term() -> &'static str {
