@@ -4,17 +4,49 @@ import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { open } from '@tauri-apps/plugin-shell';
+import { open as openExternal } from '@tauri-apps/plugin-shell';
+import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { TerminalProps } from '@/types/terminal';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useTabStore, tabStore } from '@/store/tabStore';
 import { WebglAddon } from 'xterm-addon-webgl';
 import { SearchAddon } from 'xterm-addon-search';
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
+import Zmodem from 'zmodem.js/src/zmodem_browser';
 import { SearchBox } from './SearchBox';
 import { TerminalContextMenu } from './TerminalContextMenu';
 import 'xterm/css/xterm.css';
 import { activateEnabledTerminalPlugins } from '@/plugins/terminal/runtime';
+
+type ZmodemUploadFile = {
+  name: string;
+  path: string;
+  size: number;
+  last_modified_ms: number;
+};
+
+type ZmodemTransferProgress = {
+  fileName: string;
+  fileIndex: number;
+  fileCount: number;
+  sentBytes: number;
+  totalBytes: number;
+};
+
+const formatBytes = (bytes: number) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  const precision = value >= 100 || unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
+  return `${value.toFixed(precision)} ${units[unitIndex]}`;
+};
 
 export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,11 +58,13 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
   const terminalPluginsRef = useRef<{ dispose: () => void } | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [zmodemProgress, setZmodemProgress] = useState<ZmodemTransferProgress | null>(null);
   const { settings } = useSettingsStore();
   const { updateTab } = useTabStore.getState();
   const settingsRef = useRef(settings);
   const cwdIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isActiveRef = useRef(isActive);
+  const lastNativePasteRef = useRef<{ text: string; at: number } | null>(null);
 
   // Update ref when isActive changes
   useEffect(() => {
@@ -64,31 +98,36 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
   const handlePaste = async () => {
     const term = xtermRef.current;
     if (!term) return;
-    
-    const webPromise = navigator.clipboard 
-      ? navigator.clipboard.readText().catch(e => {
-          console.warn('Web clipboard read failed:', e);
-          return { error: e, type: 'web' };
-        })
-      : Promise.resolve({ error: 'API unavailable', type: 'web' });
-    
-    const pluginPromise = readText().catch(e => {
-        console.warn('Plugin clipboard read failed:', e);
-        return { error: e, type: 'plugin' };
-    });
 
-    Promise.all([pluginPromise, webPromise]).then(([pluginResult, webResult]) => {
-        if (typeof pluginResult === 'string') {
-            term.paste(pluginResult);
-        } else if (typeof webResult === 'string') {
-            term.paste(webResult);
-        } else {
-            console.error('Clipboard paste failed', pluginResult, webResult);
-            if (!document.execCommand('paste')) {
-                term.write(`\r\n[Clipboard Error] Plugin: ${pluginResult?.error}, Web: ${webResult?.error}\r\n`);
-            }
+    try {
+      const text = await readText();
+      if (text) {
+        term.paste(text);
+        return;
+      }
+    } catch (err) {
+      console.warn('Plugin clipboard read failed:', err);
+    }
+
+    if (navigator.clipboard) {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          term.paste(text);
+          return;
         }
-    });
+      } catch (err) {
+        console.warn('Web clipboard read failed:', err);
+      }
+    }
+
+    const cached = lastNativePasteRef.current;
+    if (cached && Date.now() - cached.at < 10_000) {
+      term.paste(cached.text);
+      return;
+    }
+
+    console.warn('Clipboard paste unavailable (plugin/web/native cache all failed)');
   };
 
   const handleSelectAll = () => {
@@ -281,7 +320,7 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
     const fitAddon = new FitAddon();
     const webLinksAddon = new WebLinksAddon((_event: MouseEvent, uri: string) => {
       // Open URL in default browser using Tauri shell API
-      open(uri).catch((err) => {
+      openExternal(uri).catch((err) => {
         console.error('Failed to open URL:', uri, err);
       });
     });
@@ -606,16 +645,29 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
           sendToPty((delta < 0 ? left : right).repeat(n));
         };
 
+        const onPaste = (e: ClipboardEvent) => {
+          const text = e.clipboardData?.getData('text/plain');
+          if (!text) return;
+
+          lastNativePasteRef.current = { text, at: Date.now() };
+
+          if ((openedTerm as any).isDisposed) return;
+          e.preventDefault();
+          openedTerm.paste(text);
+        };
+
         const rootEl = openedTerm.element as HTMLElement | null;
         if (rootEl) {
           rootEl.addEventListener('mousedown', onMouseDown);
           rootEl.addEventListener('mousemove', onMouseMove);
           rootEl.addEventListener('mouseup', onMouseUp);
+          rootEl.addEventListener('paste', onPaste);
 
           (openedTerm as any)._clickToMoveCleanup = () => {
             rootEl.removeEventListener('mousedown', onMouseDown);
             rootEl.removeEventListener('mousemove', onMouseMove);
             rootEl.removeEventListener('mouseup', onMouseUp);
+            rootEl.removeEventListener('paste', onPaste);
           };
         }
 
@@ -651,6 +703,327 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
       });
     });
 
+    let zmodemSentry: any = null;
+    let activeZmodemSession: any = null;
+    let zmodemWriteQueue: Promise<unknown> = Promise.resolve();
+    let zmodemOutboundBuffer: number[] = [];
+    let zmodemQueuedWriteBytes = 0;
+    let zmodemFlushTimer: ReturnType<typeof setTimeout> | null = null;
+    let isZmodemTransferActive = false;
+    let zmodemLastProgressAt = 0;
+
+    const updateZmodemProgress = (next: ZmodemTransferProgress | null) => {
+      if (!isMounted || isDisposed) return;
+      setZmodemProgress(next);
+    };
+
+    const maybeUpdateZmodemProgress = (
+      snapshot: ZmodemTransferProgress,
+      force = false
+    ) => {
+      const now = Date.now();
+      if (!force && now - zmodemLastProgressAt < 80) return;
+      zmodemLastProgressAt = now;
+      updateZmodemProgress(snapshot);
+    };
+
+    const normalizeZmodemDisplayBytes = (octets: ArrayLike<number>) => {
+      const normalized: number[] = [];
+      for (let i = 0; i < octets.length; i += 1) {
+        const byte = octets[i];
+        if (byte === 0x8a) {
+          normalized.push(0x0a);
+          continue;
+        }
+        normalized.push(byte);
+      }
+      return Uint8Array.from(normalized);
+    };
+
+    const writeBytesToPty = (octets: ArrayLike<number>) => {
+      for (let i = 0; i < octets.length; i += 1) {
+        zmodemOutboundBuffer.push(octets[i]);
+      }
+
+      const flushOutbound = () => {
+        if (zmodemOutboundBuffer.length === 0) return;
+        const payload = zmodemOutboundBuffer;
+        zmodemOutboundBuffer = [];
+        const payloadLen = payload.length;
+        zmodemQueuedWriteBytes += payloadLen;
+
+        zmodemWriteQueue = zmodemWriteQueue
+          .then(() => invoke('pty_write_bytes', { sessionId, data: payload }))
+          .then(() => {
+            zmodemQueuedWriteBytes = Math.max(0, zmodemQueuedWriteBytes - payloadLen);
+          })
+          .catch((err) => {
+            console.error('Failed to write ZMODEM bytes to PTY:', err);
+            zmodemQueuedWriteBytes = Math.max(0, zmodemQueuedWriteBytes - payloadLen);
+          });
+      };
+
+      if (zmodemOutboundBuffer.length >= 64 * 1024) {
+        if (zmodemFlushTimer) {
+          clearTimeout(zmodemFlushTimer);
+          zmodemFlushTimer = null;
+        }
+        flushOutbound();
+        return;
+      }
+
+      if (zmodemFlushTimer) return;
+      zmodemFlushTimer = setTimeout(() => {
+        zmodemFlushTimer = null;
+        flushOutbound();
+      }, 2);
+    };
+
+    const flushZmodemWrites = async () => {
+      if (zmodemFlushTimer) {
+        clearTimeout(zmodemFlushTimer);
+        zmodemFlushTimer = null;
+      }
+      if (zmodemOutboundBuffer.length > 0) {
+        const payload = zmodemOutboundBuffer;
+        zmodemOutboundBuffer = [];
+        const payloadLen = payload.length;
+        zmodemQueuedWriteBytes += payloadLen;
+        zmodemWriteQueue = zmodemWriteQueue
+          .then(() => invoke('pty_write_bytes', { sessionId, data: payload }))
+          .then(() => {
+            zmodemQueuedWriteBytes = Math.max(0, zmodemQueuedWriteBytes - payloadLen);
+          })
+          .catch((err) => {
+            console.error('Failed to write ZMODEM bytes to PTY:', err);
+            zmodemQueuedWriteBytes = Math.max(0, zmodemQueuedWriteBytes - payloadLen);
+          });
+      }
+      await zmodemWriteQueue;
+    };
+
+    const shouldRenderZmodemOutput = (octets: ArrayLike<number>) => {
+      if (!isZmodemTransferActive) return true;
+      if (octets.length <= 48) return true;
+
+      let printable = 0;
+      for (let i = 0; i < octets.length; i += 1) {
+        const b = octets[i];
+        if (b === 0x09 || b === 0x0a || b === 0x0d || (b >= 0x20 && b <= 0x7e)) {
+          printable += 1;
+        }
+      }
+      return printable / octets.length > 0.85;
+    };
+
+    const sendZmodemUploadFiles = async (session: any, files: ZmodemUploadFile[]) => {
+      const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+      let bytesRemaining = files.reduce((sum, file) => sum + file.size, 0);
+      let sentBytes = 0;
+      let currentFileName = files[0]?.name ?? 'upload';
+      let currentFileIndex = files.length > 0 ? 1 : 0;
+
+      maybeUpdateZmodemProgress(
+        {
+          fileName: currentFileName,
+          fileIndex: currentFileIndex,
+          fileCount: files.length,
+          sentBytes,
+          totalBytes,
+        },
+        true
+      );
+
+      for (let i = 0; i < files.length; i += 1) {
+        const file = files[i];
+        currentFileName = file.name;
+        currentFileIndex = i + 1;
+        maybeUpdateZmodemProgress(
+          {
+            fileName: currentFileName,
+            fileIndex: currentFileIndex,
+            fileCount: files.length,
+            sentBytes,
+            totalBytes,
+          },
+          true
+        );
+
+        const transfer = await session.send_offer({
+          name: file.name,
+          size: file.size,
+          mtime: new Date(file.last_modified_ms),
+          files_remaining: files.length - i,
+          bytes_remaining: bytesRemaining,
+        });
+
+        if (!transfer) {
+          bytesRemaining -= file.size;
+          sentBytes += file.size;
+          maybeUpdateZmodemProgress(
+            {
+              fileName: currentFileName,
+              fileIndex: currentFileIndex,
+              fileCount: files.length,
+              sentBytes,
+              totalBytes,
+            },
+            true
+          );
+          continue;
+        }
+
+        let offset = 0;
+        while (offset < file.size) {
+          const readChunk = await invoke<number[]>('read_zmodem_upload_chunk', {
+            path: file.path,
+            offset,
+            maxLen: 256 * 1024,
+          });
+
+          if (readChunk.length === 0) {
+            break;
+          }
+
+          const payload = Uint8Array.from(readChunk);
+          const packetSize = 8192;
+          for (let packetOffset = 0; packetOffset < payload.length; packetOffset += packetSize) {
+            const packet = payload.subarray(packetOffset, Math.min(packetOffset + packetSize, payload.length));
+            transfer.send(packet);
+          }
+
+          offset += readChunk.length;
+          sentBytes += readChunk.length;
+          maybeUpdateZmodemProgress({
+            fileName: currentFileName,
+            fileIndex: currentFileIndex,
+            fileCount: files.length,
+            sentBytes,
+            totalBytes,
+          });
+
+          if (zmodemQueuedWriteBytes >= 2 * 1024 * 1024) {
+            await flushZmodemWrites();
+          }
+        }
+
+        await flushZmodemWrites();
+        await transfer.end();
+        await flushZmodemWrites();
+        bytesRemaining -= file.size;
+      }
+
+      await session.close();
+      await flushZmodemWrites();
+      maybeUpdateZmodemProgress(
+        {
+          fileName: currentFileName,
+          fileIndex: files.length,
+          fileCount: files.length,
+          sentBytes: totalBytes,
+          totalBytes,
+        },
+        true
+      );
+    };
+
+    const beginZmodemSession = async (detection: any) => {
+      const session = detection.confirm();
+      activeZmodemSession = session;
+      isZmodemTransferActive = true;
+
+      session.on('session_end', () => {
+        if (term && !(term as any).isDisposed) {
+          term.write('\r\u001b[2K');
+        }
+        isZmodemTransferActive = false;
+        updateZmodemProgress(null);
+        if (activeZmodemSession === session) {
+          activeZmodemSession = null;
+        }
+      });
+
+      if (session.type === 'send') {
+        try {
+          const selected = await openFileDialog({
+            title: 'Select files for rz upload',
+            multiple: true,
+            directory: false,
+          });
+
+          const paths = Array.isArray(selected) ? selected : selected ? [selected] : [];
+          if (paths.length === 0) {
+            await session.close();
+            return;
+          }
+
+          const files = await invoke<ZmodemUploadFile[]>('prepare_zmodem_upload_files', { paths });
+          if (files.length === 0) {
+            await session.close();
+            return;
+          }
+
+          await sendZmodemUploadFiles(session, files);
+        } finally {
+          isZmodemTransferActive = false;
+          updateZmodemProgress(null);
+          if (activeZmodemSession === session) {
+            activeZmodemSession = null;
+          }
+        }
+        return;
+      }
+
+      session.on('offer', (xfer: any) => {
+        xfer
+          .accept()
+          .then(() => {
+            const details = xfer.get_details();
+            (Zmodem as any).Browser.save_to_disk(xfer.get_payloads(), details?.name ?? 'download.bin');
+          })
+          .catch((err: unknown) => {
+            console.error('Failed to receive ZMODEM file:', err);
+          });
+      });
+
+      session.start();
+    };
+
+    try {
+      zmodemSentry = new (Zmodem as any).Sentry({
+        to_terminal: (octets: ArrayLike<number>) => {
+          if (term && !(term as any).isDisposed) {
+            if (!shouldRenderZmodemOutput(octets)) {
+              return;
+            }
+            term.write(normalizeZmodemDisplayBytes(octets));
+          }
+        },
+        sender: (octets: ArrayLike<number>) => {
+          writeBytesToPty(octets);
+        },
+        on_detect: (detection: any) => {
+          beginZmodemSession(detection).catch((err) => {
+            console.error('Failed to handle ZMODEM session:', err);
+            isZmodemTransferActive = false;
+            updateZmodemProgress(null);
+            try {
+              if (activeZmodemSession) {
+                activeZmodemSession.abort();
+              }
+            } catch {
+              // Ignore secondary abort errors.
+            }
+          });
+        },
+        on_retract: () => {
+          // Detection retracted before confirmation; nothing to do.
+        },
+      });
+    } catch (err) {
+      console.error('Failed to initialize ZMODEM support:', err);
+    }
+
     // Handle resize
     const handleResize = () => {
       if (!term) return;
@@ -684,9 +1057,19 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
     }, 100);
 
     // Listen for PTY output
-    const unlistenPromise = listen<string>(`pty-output-${sessionId}`, (event) => {
+    const unlistenPromise = listen<number[] | string>(`pty-output-${sessionId}`, (event) => {
       if (term && !(term as any).isDisposed) {
-        term.write(event.payload);
+        if (typeof event.payload === 'string') {
+          term.write(event.payload);
+          return;
+        }
+
+        const chunk = Uint8Array.from(event.payload);
+        if (zmodemSentry) {
+          zmodemSentry.consume(chunk);
+        } else {
+          term.write(chunk);
+        }
       }
     });
 
@@ -703,6 +1086,24 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
     return () => {
       isMounted = false;
       isDisposed = true;
+
+      if (activeZmodemSession) {
+        try {
+          activeZmodemSession.abort();
+        } catch {
+          // Ignore abort failures during disposal.
+        }
+        activeZmodemSession = null;
+      }
+      isZmodemTransferActive = false;
+      updateZmodemProgress(null);
+      if (zmodemFlushTimer) {
+        clearTimeout(zmodemFlushTimer);
+        zmodemFlushTimer = null;
+      }
+      zmodemOutboundBuffer = [];
+      zmodemQueuedWriteBytes = 0;
+      zmodemSentry = null;
 
       terminalPluginsRef.current?.dispose();
       terminalPluginsRef.current = null;
@@ -735,6 +1136,10 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
     };
   }, [sessionId]);
 
+  const zmodemPercent = zmodemProgress
+    ? Math.max(0, Math.min(100, Math.round((zmodemProgress.sentBytes / Math.max(zmodemProgress.totalBytes, 1)) * 100)))
+    : 0;
+
   return (
     <TerminalContextMenu
       onCopy={handleCopy}
@@ -757,6 +1162,34 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
               xtermRef.current?.focus();
             }}
           />
+        )}
+        {zmodemProgress && (
+          <div
+            className="absolute right-3 top-3 z-20 w-80 rounded-md border px-3 py-2 text-xs shadow"
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              color: '#f4f4f5',
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate" title={zmodemProgress.fileName}>{zmodemProgress.fileName}</span>
+              <span>{zmodemPercent}%</span>
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-sm" style={{ backgroundColor: 'rgba(255, 255, 255, 0.18)' }}>
+              <div
+                className="h-full transition-[width] duration-100"
+                style={{
+                  width: `${zmodemPercent}%`,
+                  backgroundColor: settings.theme.colors.green,
+                }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between opacity-85">
+              <span>{formatBytes(zmodemProgress.sentBytes)} / {formatBytes(zmodemProgress.totalBytes)}</span>
+              <span>{zmodemProgress.fileIndex}/{zmodemProgress.fileCount}</span>
+            </div>
+          </div>
         )}
         {!isInitialized && (
           <div className="absolute inset-0 flex items-center justify-center app-text-muted">

@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use libc::{self, winsize};
 use std::fs::File;
-use std::io::Write;
 use std::os::unix::io::{FromRawFd, RawFd};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
@@ -69,7 +68,7 @@ fn choose_term() -> &'static str {
 
 pub struct UnixPty {
     pub master_fd: RawFd,
-    pub master_file: File,
+    pub _master_file: File,
     pub child: Child,
 }
 
@@ -197,10 +196,7 @@ impl UnixPty {
 
         // Open slave for child
         let slave_fd = unsafe {
-            let fd = libc::open(
-                slave_name.as_ptr() as *const i8,
-                libc::O_RDWR,
-            );
+            let fd = libc::open(slave_name.as_ptr() as *const i8, libc::O_RDWR);
             if fd < 0 {
                 libc::close(master_fd);
                 return Err(anyhow::anyhow!("Failed to open slave"));
@@ -247,7 +243,7 @@ impl UnixPty {
 
         Ok(UnixPty {
             master_fd,
-            master_file,
+            _master_file: master_file,
             child,
         })
     }
@@ -268,9 +264,80 @@ impl UnixPty {
     }
 
     pub fn write(&mut self, data: &[u8]) -> Result<usize> {
-        self.master_file
-            .write(data)
-            .context("Failed to write to PTY")
+        let mut written = 0usize;
+
+        while written < data.len() {
+            let remaining = data.len() - written;
+            let ptr = unsafe { data.as_ptr().add(written) } as *const libc::c_void;
+
+            let n = unsafe { libc::write(self.master_fd, ptr, remaining) };
+
+            if n > 0 {
+                written += n as usize;
+                continue;
+            }
+
+            if n == 0 {
+                return Err(anyhow::anyhow!("PTY write returned 0"));
+            }
+
+            let errno = unsafe {
+                #[cfg(target_os = "linux")]
+                {
+                    *libc::__errno_location()
+                }
+                #[cfg(target_os = "macos")]
+                {
+                    *libc::__error()
+                }
+            };
+
+            if errno == libc::EINTR {
+                continue;
+            }
+
+            if errno == libc::EAGAIN || errno == libc::EWOULDBLOCK {
+                let mut pollfd = libc::pollfd {
+                    fd: self.master_fd,
+                    events: libc::POLLOUT,
+                    revents: 0,
+                };
+
+                let poll_result = unsafe { libc::poll(&mut pollfd as *mut libc::pollfd, 1, 1000) };
+
+                if poll_result > 0 {
+                    continue;
+                }
+
+                if poll_result == 0 {
+                    continue;
+                }
+
+                let poll_errno = unsafe {
+                    #[cfg(target_os = "linux")]
+                    {
+                        *libc::__errno_location()
+                    }
+                    #[cfg(target_os = "macos")]
+                    {
+                        *libc::__error()
+                    }
+                };
+
+                if poll_errno == libc::EINTR {
+                    continue;
+                }
+
+                return Err(anyhow::anyhow!(
+                    "Failed polling PTY writable state: errno {}",
+                    poll_errno
+                ));
+            }
+
+            return Err(anyhow::anyhow!("Failed to write to PTY: errno {}", errno));
+        }
+
+        Ok(written)
     }
 
     pub fn try_clone_reader(&self) -> Result<File> {
@@ -284,7 +351,9 @@ impl UnixPty {
             let flags = libc::fcntl(new_fd, libc::F_GETFL);
             if flags < 0 || libc::fcntl(new_fd, libc::F_SETFL, flags | libc::O_NONBLOCK) < 0 {
                 libc::close(new_fd);
-                return Err(anyhow::anyhow!("Failed to set non-blocking mode on duplicated fd"));
+                return Err(anyhow::anyhow!(
+                    "Failed to set non-blocking mode on duplicated fd"
+                ));
             }
         }
 

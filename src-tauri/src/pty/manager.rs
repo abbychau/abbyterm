@@ -85,12 +85,7 @@ impl PtyManager {
         }
     }
 
-    fn start_output_task(
-        &self,
-        id: Uuid,
-        fd: std::os::unix::io::RawFd,
-        app: AppHandle,
-    ) {
+    fn start_output_task(&self, id: Uuid, fd: std::os::unix::io::RawFd, app: AppHandle) {
         std::thread::spawn(move || {
             let mut buf = [0u8; 8192];
             let event_name = format!("pty-output-{}", id);
@@ -103,16 +98,18 @@ impl PtyManager {
                     revents: 0,
                 };
 
-                let poll_result = unsafe {
-                    libc::poll(&mut pollfd as *mut libc::pollfd, 1, -1)
-                };
+                let poll_result = unsafe { libc::poll(&mut pollfd as *mut libc::pollfd, 1, -1) };
 
                 if poll_result < 0 {
                     let errno = unsafe {
                         #[cfg(target_os = "linux")]
-                        { *libc::__errno_location() }
+                        {
+                            *libc::__errno_location()
+                        }
                         #[cfg(target_os = "macos")]
-                        { *libc::__error() }
+                        {
+                            *libc::__error()
+                        }
                     };
                     if errno == libc::EINTR {
                         // Interrupted by signal, retry
@@ -131,12 +128,11 @@ impl PtyManager {
                 // Check if there's data to read or if fd was closed
                 if pollfd.revents & libc::POLLIN != 0 {
                     // Data available, read it
-                    let n = unsafe {
-                        libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len())
-                    };
+                    let n =
+                        unsafe { libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len()) };
 
                     if n > 0 {
-                        let data = String::from_utf8_lossy(&buf[..(n as usize)]).to_string();
+                        let data = buf[..(n as usize)].to_vec();
                         let _ = app.emit(&event_name, data);
                     } else if n == 0 {
                         // EOF - process exited
@@ -145,9 +141,13 @@ impl PtyManager {
                         // n < 0: error occurred
                         let errno = unsafe {
                             #[cfg(target_os = "linux")]
-                            { *libc::__errno_location() }
+                            {
+                                *libc::__errno_location()
+                            }
                             #[cfg(target_os = "macos")]
-                            { *libc::__error() }
+                            {
+                                *libc::__error()
+                            }
                         };
                         if errno == libc::EAGAIN || errno == libc::EWOULDBLOCK {
                             // Should not happen after successful poll, but continue anyway
@@ -213,7 +213,9 @@ fn get_process_cwd(pid: i32) -> Result<String> {
 
 #[cfg(not(any(target_os = "macos", target_os = "linux")))]
 fn get_process_cwd(_pid: i32) -> Result<String> {
-    Err(anyhow::anyhow!("Getting process CWD is not supported on this platform"))
+    Err(anyhow::anyhow!(
+        "Getting process CWD is not supported on this platform"
+    ))
 }
 
 impl Default for PtyManager {

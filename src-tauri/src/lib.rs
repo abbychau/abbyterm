@@ -1,15 +1,15 @@
 mod commands;
 mod pty;
-mod ssh_config;
 mod ratel_mode;
+mod ssh_config;
 
+use commands::app_commands::*;
+use commands::container_commands::*;
 use commands::pty_commands::*;
+use commands::session_commands::*;
+use commands::shell_commands::*;
 use commands::ssh_commands::*;
 use commands::window_commands::*;
-use commands::shell_commands::*;
-use commands::container_commands::*;
-use commands::session_commands::*;
-use commands::app_commands::*;
 use pty::manager::PtyManager;
 use std::sync::Mutex;
 use tauri::State;
@@ -34,19 +34,22 @@ pub fn run() {
 
     if let Some(index) = e_index {
         if index + 1 < args.len() {
-             initial_args = Some(args[index+1..].to_vec());
+            initial_args = Some(args[index + 1..].to_vec());
         }
     }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(PtyManager::new())
-        .manage(InitialCliArgs { args: Mutex::new(initial_args) })
+        .manage(InitialCliArgs {
+            args: Mutex::new(initial_args),
+        })
         .setup(|_app| {
             // linux
-            
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -61,8 +64,11 @@ pub fn run() {
             create_pty_session,
             create_ratel_session,
             pty_write,
+            pty_write_bytes,
             pty_resize,
             pty_kill,
+            prepare_zmodem_upload_files,
+            read_zmodem_upload_chunk,
             get_session_cwd,
             // SSH commands
             get_ssh_hosts,
