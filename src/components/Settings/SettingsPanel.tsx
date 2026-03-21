@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSettingsStore, defaultShortcuts } from '@/store/settingsStore';
 import { defaultThemes, Shortcuts } from '@/types/settings';
 import { invoke } from '@tauri-apps/api/core';
+import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { ShortcutRecorder } from './ShortcutRecorder';
 import { RotateCcw } from 'lucide-react';
 import { useTabStore } from '@/store/tabStore';
@@ -33,6 +34,27 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         [key]: value,
       },
     });
+  };
+
+  const testFilePicker = async () => {
+    try {
+      const selected = await openFileDialog({
+        title: 'Test File Picker',
+        multiple: true,
+        directory: false,
+      });
+
+      if (!selected) {
+        alert('File picker opened: cancelled');
+        return;
+      }
+
+      const paths = Array.isArray(selected) ? selected : [selected];
+      alert(`File picker opened: selected ${paths.length} file(s)`);
+    } catch (err) {
+      console.error('File picker test failed:', err);
+      alert(`File picker test failed: ${err}`);
+    }
   };
 
   const renderShortcutRow = (category: string, label: string, id: keyof Shortcuts, description?: string) => (
@@ -447,6 +469,19 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   />
                   <p className="text-[11px] app-text-muted mt-1">
                     Starting directory for new shell sessions. Use ~ for home directory.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1.5">Dialog Test</label>
+                  <button
+                    onClick={testFilePicker}
+                    className="px-3 py-1.5 text-xs app-surface border app-border hover:app-hover transition-colors"
+                  >
+                    Test File Picker
+                  </button>
+                  <p className="text-[11px] app-text-muted mt-1">
+                    Opens the native file dialog to verify dialog integration on this system.
                   </p>
                 </div>
 

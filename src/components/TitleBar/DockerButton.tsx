@@ -36,7 +36,10 @@ export function DockerButton() {
     return `'${p.replace(/'/g, `'"'"'`)}'`;
   };
 
-  const getHostShellForExec = () => (settings.shell || '/bin/sh').trim() || '/bin/sh';
+  const getHostShellForExec = () => {
+    const configured = (settings.shell || '').trim();
+    return configured.length > 0 ? configured : null;
+  };
 
   const getHostShellArgsForExec = (shellPath: string) => {
     // macOS GUI apps often have a limited PATH; a login shell helps load user PATH.
@@ -84,7 +87,7 @@ export function DockerButton() {
       const tabId = uuidv4();
 
       const hostShell = getHostShellForExec();
-      const hostArgs = getHostShellArgsForExec(hostShell);
+      const hostArgs = hostShell ? getHostShellArgsForExec(hostShell) : null;
 
       // Create PTY session with docker exec command
       const sessionId = await invoke<string>('create_pty_session', {

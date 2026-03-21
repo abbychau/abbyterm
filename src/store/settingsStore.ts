@@ -36,7 +36,7 @@ const defaultSettings: Settings = {
   cursorStyle: 'block',
   cursorBlink: true,
   scrollback: 10000,
-  shell: '/bin/bash',
+  shell: '',
   defaultCwd: '~',
   autoStartLocalTerminal: false,
   useWebGL: false,

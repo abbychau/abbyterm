@@ -1,368 +1,150 @@
-use anyhow::{Context, Result};
-use libc::{self, winsize};
-use std::fs::File;
-use std::os::unix::io::{FromRawFd, RawFd};
-use std::os::unix::process::CommandExt;
-use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
-
-fn terminfo_entry_exists(term: &str) -> bool {
-    let first = term.chars().next().unwrap_or('x');
-
-    // Different systems use different subdirectory schemes:
-    // - Linux typically uses the first letter (lowercase) for alphanumeric, hex for others
-    // - macOS uses hex encoding for all characters
-    let subdirs = if first.is_ascii_alphanumeric() {
-        // Check both letter-based and hex-based subdirectories
-        vec![
-            first.to_ascii_lowercase().to_string(),
-            format!("{:x}", first as u32),
-        ]
-    } else {
-        vec![format!("{:x}", first as u32)]
-    };
-
-    let mut search_dirs: Vec<PathBuf> = Vec::new();
-
-    if let Ok(dir) = std::env::var("TERMINFO") {
-        if !dir.trim().is_empty() {
-            search_dirs.push(PathBuf::from(dir));
-        }
-    }
-
-    if let Ok(dirs) = std::env::var("TERMINFO_DIRS") {
-        for part in dirs.split(':') {
-            let trimmed = part.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-            search_dirs.push(PathBuf::from(trimmed));
-        }
-    }
-
-    // Common system terminfo locations.
-    search_dirs.push(PathBuf::from("/usr/share/terminfo"));
-    search_dirs.push(PathBuf::from("/lib/terminfo"));
-    search_dirs.push(PathBuf::from("/etc/terminfo"));
-    search_dirs.push(PathBuf::from("/usr/share/lib/terminfo"));
-
-    // Check all combinations of search directories and subdirectory schemes
-    search_dirs.into_iter().any(|dir| {
-        subdirs.iter().any(|subdir| {
-            let path = dir.join(subdir).join(term);
-            path.exists()
-        })
-    })
-}
-
-fn choose_term() -> &'static str {
-    if terminfo_entry_exists("xterm-256color") {
-        return "xterm-256color";
-    }
-    if terminfo_entry_exists("xterm") {
-        return "xterm";
-    }
-    // Broadly available fallback that still provides sane cursor-key behavior.
-    "ansi"
-}
+use anyhow::Result;
+use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 
 pub struct UnixPty {
-    pub master_fd: RawFd,
-    pub _master_file: File,
-    pub child: Child,
+    pub master: Box<dyn MasterPty + Send>,
+    pub writer: Box<dyn Write + Send>,
+    pub child: Box<dyn portable_pty::Child + Send + Sync>,
 }
 
-// UnixPty implementation for managing pseudo-terminals on Unix-like systems.
-//
-// This implementation handles the lifecycle of a PTY pair (master/slave) and the associated
-// child process (shell).
-//
-// Key concepts:
-// - **Master PTY**: The side held by this application. We write input to it (which the shell receives) and read output from it (which the shell produced).
-// - **Slave PTY**: The side given to the child process. It acts as the child's stdin, stdout, and stderr.
-// - **Session & Controlling Terminal**: The child process is placed in a new session (`setsid`) and the slave PTY is set as its controlling terminal (`TIOCSCTTY`). This ensures signals like Ctrl+C are handled correctly.
-// - **Non-blocking I/O**: The master FD is set to non-blocking mode to allow asynchronous reading.
 impl UnixPty {
     pub fn new(
         shell: Option<String>,
         args: Option<Vec<String>>,
-        cwd: Option<std::path::PathBuf>,
+        cwd: Option<PathBuf>,
         cols: u16,
         rows: u16,
     ) -> Result<Self> {
-        // Create PTY master
-        let master_fd = unsafe { libc::posix_openpt(libc::O_RDWR | libc::O_NOCTTY) };
-        if master_fd < 0 {
-            return Err(anyhow::anyhow!("Failed to create PTY master"));
-        }
+        let pty_system = native_pty_system();
+        let pair = pty_system.openpty(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })?;
 
-        // Grant access to slave
-        if unsafe { libc::grantpt(master_fd) } != 0 {
-            unsafe { libc::close(master_fd) };
-            return Err(anyhow::anyhow!("grantpt failed"));
-        }
+        let shell_path = choose_shell(shell);
+        let mut command = CommandBuilder::new(shell_path.clone());
 
-        // Unlock slave
-        if unsafe { libc::unlockpt(master_fd) } != 0 {
-            unsafe { libc::close(master_fd) };
-            return Err(anyhow::anyhow!("unlockpt failed"));
-        }
-
-        // Get slave name
-        let slave_name = unsafe {
-            let name_ptr = libc::ptsname(master_fd);
-            if name_ptr.is_null() {
-                libc::close(master_fd);
-                return Err(anyhow::anyhow!("ptsname failed"));
-            }
-            std::ffi::CStr::from_ptr(name_ptr)
-                .to_string_lossy()
-                .into_owned()
-        };
-
-        // Set window size
-        let ws = winsize {
-            ws_row: rows,
-            ws_col: cols,
-            ws_xpixel: 0,
-            ws_ypixel: 0,
-        };
-        unsafe {
-            libc::ioctl(master_fd, libc::TIOCSWINSZ, &ws as *const _);
-        }
-
-        // Set master to non-blocking
-        unsafe {
-            let flags = libc::fcntl(master_fd, libc::F_GETFL);
-            libc::fcntl(master_fd, libc::F_SETFL, flags | libc::O_NONBLOCK);
-        }
-
-        // Spawn child process
-        let shell_path = shell
-            .or_else(|| std::env::var("SHELL").ok())
-            .unwrap_or_else(|| "/bin/bash".to_string());
-
-        let mut command = Command::new(&shell_path);
-        let shell_name = Path::new(&shell_path)
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("")
-            .to_ascii_lowercase();
-
-        // If no custom args are provided, start an interactive shell and optionally login mode.
         if let Some(args) = args {
             command.args(args);
         } else {
-            // Use an interactive shell so rc files (for nvm/npm PATH, aliases, etc.) are loaded.
-            // Add login mode for shells that support it to also load profile files.
-            let supports_login_flag = matches!(
-                shell_name.as_str(),
-                "bash" | "zsh" | "fish" | "ksh" | "mksh"
-            );
-            // Start as login shell first to load profile files
-            if supports_login_flag {
-                command.arg("-l");
+            #[cfg(not(target_os = "windows"))]
+            {
+                let shell_name = Path::new(&shell_path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_ascii_lowercase();
+                let supports_login_flag = matches!(
+                    shell_name.as_str(),
+                    "bash" | "zsh" | "fish" | "ksh" | "mksh"
+                );
+
+                if supports_login_flag {
+                    command.arg("-l");
+                }
+                command.arg("-i");
             }
-            // Then enable interactive mode
-            command.arg("-i");
-        }
 
-        // Set TERM environment variable
-        command.env("TERM", choose_term());
+            #[cfg(target_os = "windows")]
+            {
+                let shell_name = Path::new(&shell_path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_ascii_lowercase();
 
-        // Ensure HOME is set (needed for loading profile files)
-        if let Ok(home) = std::env::var("HOME") {
-            command.env("HOME", home);
-        }
-
-        // Build PATH with cargo bin directory if it exists
-        let mut path_entries = Vec::new();
-        if let Ok(home) = std::env::var("HOME") {
-            let cargo_bin = std::path::Path::new(&home).join(".cargo/bin");
-            if cargo_bin.exists() {
-                path_entries.push(cargo_bin.to_string_lossy().to_string());
+                if shell_name == "powershell.exe" || shell_name == "pwsh.exe" {
+                    command.arg("-NoLogo");
+                } else if shell_name == "cmd.exe" {
+                    command.arg("/Q");
+                }
             }
         }
-        if let Ok(path) = std::env::var("PATH") {
-            path_entries.push(path);
-        }
-        if !path_entries.is_empty() {
-            command.env("PATH", path_entries.join(":"));
-        }
+
+        command.env("TERM", "xterm-256color");
 
         if let Some(dir) = cwd {
-            command.current_dir(dir);
+            command.cwd(dir);
         }
 
-        // Open slave for child
-        let slave_fd = unsafe {
-            let fd = libc::open(slave_name.as_ptr() as *const i8, libc::O_RDWR);
-            if fd < 0 {
-                libc::close(master_fd);
-                return Err(anyhow::anyhow!("Failed to open slave"));
-            }
-            fd
-        };
+        let child = pair.slave.spawn_command(command)?;
+        let writer = pair.master.take_writer()?;
 
-        // Spawn child with slave as stdin/stdout/stderr
-        unsafe {
-            command.pre_exec(move || {
-                // Create new session
-                if libc::setsid() < 0 {
-                    return Err(std::io::Error::last_os_error());
-                }
-
-                // Set controlling terminal
-                if libc::ioctl(slave_fd, libc::TIOCSCTTY as _, 0) < 0 {
-                    return Err(std::io::Error::last_os_error());
-                }
-
-                // Redirect stdin/stdout/stderr to slave
-                libc::dup2(slave_fd, 0);
-                libc::dup2(slave_fd, 1);
-                libc::dup2(slave_fd, 2);
-
-                // Close slave fd if it's not 0, 1, or 2
-                if slave_fd > 2 {
-                    libc::close(slave_fd);
-                }
-
-                Ok(())
-            });
-        }
-
-        let child = command.spawn().context("Failed to spawn shell")?;
-
-        // Close slave in parent
-        unsafe {
-            libc::close(slave_fd);
-        }
-
-        // Create File from master_fd for reading/writing
-        let master_file = unsafe { File::from_raw_fd(master_fd) };
-
-        Ok(UnixPty {
-            master_fd,
-            _master_file: master_file,
+        Ok(Self {
+            master: pair.master,
+            writer,
             child,
         })
     }
 
     pub fn resize(&self, cols: u16, rows: u16) -> Result<()> {
-        let ws = winsize {
-            ws_row: rows,
-            ws_col: cols,
-            ws_xpixel: 0,
-            ws_ypixel: 0,
-        };
-        unsafe {
-            if libc::ioctl(self.master_fd, libc::TIOCSWINSZ, &ws as *const _) < 0 {
-                return Err(anyhow::anyhow!("ioctl TIOCSWINSZ failed"));
-            }
-        }
-        Ok(())
+        self.master.resize(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
     }
 
     pub fn write(&mut self, data: &[u8]) -> Result<usize> {
-        let mut written = 0usize;
-
-        while written < data.len() {
-            let remaining = data.len() - written;
-            let ptr = unsafe { data.as_ptr().add(written) } as *const libc::c_void;
-
-            let n = unsafe { libc::write(self.master_fd, ptr, remaining) };
-
-            if n > 0 {
-                written += n as usize;
-                continue;
-            }
-
-            if n == 0 {
-                return Err(anyhow::anyhow!("PTY write returned 0"));
-            }
-
-            let errno = unsafe {
-                #[cfg(target_os = "linux")]
-                {
-                    *libc::__errno_location()
-                }
-                #[cfg(target_os = "macos")]
-                {
-                    *libc::__error()
-                }
-            };
-
-            if errno == libc::EINTR {
-                continue;
-            }
-
-            if errno == libc::EAGAIN || errno == libc::EWOULDBLOCK {
-                let mut pollfd = libc::pollfd {
-                    fd: self.master_fd,
-                    events: libc::POLLOUT,
-                    revents: 0,
-                };
-
-                let poll_result = unsafe { libc::poll(&mut pollfd as *mut libc::pollfd, 1, 1000) };
-
-                if poll_result > 0 {
-                    continue;
-                }
-
-                if poll_result == 0 {
-                    continue;
-                }
-
-                let poll_errno = unsafe {
-                    #[cfg(target_os = "linux")]
-                    {
-                        *libc::__errno_location()
-                    }
-                    #[cfg(target_os = "macos")]
-                    {
-                        *libc::__error()
-                    }
-                };
-
-                if poll_errno == libc::EINTR {
-                    continue;
-                }
-
-                return Err(anyhow::anyhow!(
-                    "Failed polling PTY writable state: errno {}",
-                    poll_errno
-                ));
-            }
-
-            return Err(anyhow::anyhow!("Failed to write to PTY: errno {}", errno));
-        }
-
-        Ok(written)
+        self.writer.write_all(data)?;
+        self.writer.flush()?;
+        Ok(data.len())
     }
 
-    pub fn try_clone_reader(&self) -> Result<File> {
-        let new_fd = unsafe { libc::dup(self.master_fd) };
-        if new_fd < 0 {
-            return Err(anyhow::anyhow!("Failed to dup master fd"));
-        }
-
-        // Set the duplicated fd to non-blocking as well
-        unsafe {
-            let flags = libc::fcntl(new_fd, libc::F_GETFL);
-            if flags < 0 || libc::fcntl(new_fd, libc::F_SETFL, flags | libc::O_NONBLOCK) < 0 {
-                libc::close(new_fd);
-                return Err(anyhow::anyhow!(
-                    "Failed to set non-blocking mode on duplicated fd"
-                ));
-            }
-        }
-
-        Ok(unsafe { File::from_raw_fd(new_fd) })
+    pub fn try_clone_reader(&self) -> Result<Box<dyn std::io::Read + Send>> {
+        self.master.try_clone_reader()
     }
 }
 
-impl Drop for UnixPty {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
+fn default_shell() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        if command_exists("pwsh.exe") {
+            return "pwsh.exe".to_string();
+        }
+        if command_exists("powershell.exe") {
+            return "powershell.exe".to_string();
+        }
+        std::env::var("ComSpec").unwrap_or_else(|_| "cmd.exe".to_string())
     }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string())
+    }
+}
+
+fn choose_shell(shell: Option<String>) -> String {
+    let shell = shell
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(shell) = shell {
+            if shell.starts_with('/') {
+                return default_shell();
+            }
+            return shell;
+        }
+        return default_shell();
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        shell.unwrap_or_else(default_shell)
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn command_exists(command: &str) -> bool {
+    std::env::var_os("PATH")
+        .map(|paths| std::env::split_paths(&paths).any(|dir| dir.join(command).is_file()))
+        .unwrap_or(false)
 }

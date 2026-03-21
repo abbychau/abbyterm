@@ -27,10 +27,12 @@ dirs = "5.0"
 futures = "0.3"
 libc = "0.2"
 tauri-plugin-clipboard-manager = "2.3.2"
-ratel-rust = "0.1.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 libproc = "0.14"
+
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+ratel-rust = "0.1.1"
 
 [features]
 default = ["custom-protocol"]

@@ -5,7 +5,7 @@
   "scripts": {
     "regenerate-icons": "tmpfile=$(mktemp -t abbyterm-icon-XXXXXX.png) && cp public/hamham.png \"$tmpfile\" && npx tauri icon \"$tmpfile\" && rm -f \"$tmpfile\"",
     "update": "npm run build && ./reinstall_deb.sh",
-    "dev": "echo 'DO NOT RUN under VSCode.' && tauri dev",
+    "dev": "node scripts/dev-dynamic-port.mjs",
     "build": "tauri build",
     "preview": "vite preview",
     "vite": "vite",
@@ -16,7 +16,7 @@
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-tabs": "^1.1.13",
-    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/api": "^2.10.0",
     "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-opener": "^2.5.2",

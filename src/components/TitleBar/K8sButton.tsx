@@ -199,7 +199,7 @@ export function K8sButton() {
 
       // Create PTY session with kubectl exec command
       const sessionId = await invoke<string>('create_pty_session', {
-        shell: '/bin/sh',
+        shell: null,
         args: null,
         cwd: null,
         cols: 80,

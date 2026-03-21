@@ -38,7 +38,7 @@ impl PtySession {
         self.pty.write(data)
     }
 
-    pub fn try_clone_reader(&self) -> Result<std::fs::File> {
+    pub fn try_clone_reader(&self) -> Result<Box<dyn std::io::Read + Send>> {
         self.pty.try_clone_reader()
     }
 
@@ -47,7 +47,7 @@ impl PtySession {
         Ok(())
     }
 
-    pub fn get_child_pid(&self) -> u32 {
-        self.pty.child.id()
+    pub fn get_child_pid(&self) -> Option<u32> {
+        self.pty.child.process_id()
     }
 }

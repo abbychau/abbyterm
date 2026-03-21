@@ -79,28 +79,23 @@ export function NewTabButton() {
       const hostname = host.hostname || host.name;
       const port = host.port || 22;
       const user = host.user || '';
+      const destination = `${user ? `${user}@` : ''}${hostname}`;
 
-      let sshCommand = `ssh ${user ? `${user}@` : ''}${hostname}`;
+      const sshArgs: string[] = ['-tt', destination];
       if (port !== 22) {
-        sshCommand += ` -p ${port}`;
+        sshArgs.push('-p', String(port));
       }
       if (host.identity_file) {
-        sshCommand += ` -i ${host.identity_file}`;
+        sshArgs.push('-i', host.identity_file);
       }
 
-      // Create PTY session with SSH command
+      // Create PTY session running ssh directly
       const sessionId = await invoke<string>('create_pty_session', {
-        shell: '/bin/sh',
-        args: null,
+        shell: 'ssh',
+        args: sshArgs,
         cwd: null,
         cols: 80,
         rows: 24,
-      });
-
-      // Write SSH command to start connection
-      await invoke('pty_write', {
-        sessionId,
-        data: sshCommand + '\n',
       });
 
       // Add tab to store with rootPane structure

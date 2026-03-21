@@ -711,6 +711,7 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
     let zmodemFlushTimer: ReturnType<typeof setTimeout> | null = null;
     let isZmodemTransferActive = false;
     let zmodemLastProgressAt = 0;
+    let zmodemInboundCarry: number[] = [];
 
     const updateZmodemProgress = (next: ZmodemTransferProgress | null) => {
       if (!isMounted || isDisposed) return;
@@ -737,6 +738,56 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
         }
         normalized.push(byte);
       }
+      return Uint8Array.from(normalized);
+    };
+
+    const normalizeZmodemInboundBytes = (octets: Uint8Array) => {
+      const replacementThenZrqinit = [0xef, 0xbf, 0xbd, 0x2a, 0x2a, 0x42];
+      const bytes = zmodemInboundCarry.length > 0
+        ? [...zmodemInboundCarry, ...Array.from(octets)]
+        : Array.from(octets);
+      const normalized: number[] = [];
+
+      const isPrefix = (candidate: number[], pattern: number[]) => {
+        if (candidate.length > pattern.length) return false;
+        for (let i = 0; i < candidate.length; i += 1) {
+          if (candidate[i] !== pattern[i]) return false;
+        }
+        return true;
+      };
+
+      let i = 0;
+      while (i < bytes.length) {
+        const remaining = bytes.length - i;
+
+        if (
+          remaining < replacementThenZrqinit.length &&
+          isPrefix(bytes.slice(i), replacementThenZrqinit)
+        ) {
+          break;
+        }
+
+        if (
+          remaining >= replacementThenZrqinit.length &&
+          bytes[i] === replacementThenZrqinit[0] &&
+          bytes[i + 1] === replacementThenZrqinit[1] &&
+          bytes[i + 2] === replacementThenZrqinit[2] &&
+          bytes[i + 3] === replacementThenZrqinit[3] &&
+          bytes[i + 4] === replacementThenZrqinit[4] &&
+          bytes[i + 5] === replacementThenZrqinit[5]
+        ) {
+          normalized.push(0x18, 0x2a, 0x2a, 0x42);
+          i += 5;
+          i += 1;
+          continue;
+        }
+
+        normalized.push(bytes[i]);
+        i += 1;
+      }
+
+      zmodemInboundCarry = bytes.slice(i);
+
       return Uint8Array.from(normalized);
     };
 
@@ -1059,16 +1110,16 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
     // Listen for PTY output
     const unlistenPromise = listen<number[] | string>(`pty-output-${sessionId}`, (event) => {
       if (term && !(term as any).isDisposed) {
-        if (typeof event.payload === 'string') {
-          term.write(event.payload);
-          return;
-        }
+        const chunk =
+          typeof event.payload === 'string'
+            ? new TextEncoder().encode(event.payload)
+            : Uint8Array.from(event.payload);
+        const normalizedChunk = normalizeZmodemInboundBytes(chunk);
 
-        const chunk = Uint8Array.from(event.payload);
         if (zmodemSentry) {
-          zmodemSentry.consume(chunk);
+          zmodemSentry.consume(normalizedChunk);
         } else {
-          term.write(chunk);
+          term.write(normalizedChunk);
         }
       }
     });
@@ -1103,6 +1154,7 @@ export function Terminal({ sessionId, isActive, tabId, paneId, isPrimaryPane }: 
       }
       zmodemOutboundBuffer = [];
       zmodemQueuedWriteBytes = 0;
+      zmodemInboundCarry = [];
       zmodemSentry = null;
 
       terminalPluginsRef.current?.dispose();
